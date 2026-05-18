@@ -69,29 +69,29 @@
 </template>
 
 <script setup>
-	import { ref } from 'vue';
-	import { onShow } from '@dcloudio/uni-app';
-	import { orderApi } from '@/api';
+	import { ref } from "vue";
+	import { onShow } from "@dcloudio/uni-app";
+	import { orderApi } from "@/api";
 
 	const tabs = [
-		{ label: '全部', value: '' },
-		{ label: '待支付', value: '1' },
-		{ label: '已支付', value: '2' },
-		{ label: '已取消', value: '3' },
-		{ label: '已完成', value: '4' },
-		{ label: '已退款', value: '5' }
+		{ label: "全部", value: "" },
+		{ label: "待支付", value: "1" },
+		{ label: "已支付", value: "2" },
+		{ label: "已取消", value: "3" },
+		{ label: "已完成", value: "4" },
+		{ label: "已退款", value: "5" },
 	];
-	const activeTab = ref('');
+	const activeTab = ref("");
 	const orders = ref([]);
 	const loading = ref(false);
 
 	function getStatusText(s) {
-		const map = { 1: '待支付', 2: '已支付', 3: '已取消', 4: '已完成', 5: '已退款' };
-		return map[s] || '未知';
+		const map = { 1: "待支付", 2: "已支付", 3: "已取消", 4: "已完成", 5: "已退款" };
+		return map[s] || "未知";
 	}
 	function getStatusClass(s) {
-		const map = { 1: 'pending', 2: 'paid', 3: 'cancelled', 4: 'done', 5: 'refunded' };
-		return map[s] || '';
+		const map = { 1: "pending", 2: "paid", 3: "cancelled", 4: "done", 5: "refunded" };
+		return map[s] || "";
 	}
 
 	async function switchTab(value) {
@@ -104,7 +104,7 @@
 		try {
 			const res = await orderApi.myOrders({
 				pageSize: 50,
-				status: activeTab.value ? Number(activeTab.value) : undefined
+				status: activeTab.value ? Number(activeTab.value) : undefined,
 			});
 			orders.value = res.data.list;
 		} finally {
@@ -113,25 +113,25 @@
 	}
 
 	async function handlePay(order) {
-		const res = await uni.showModal({ title: '确认支付', content: `确认支付 ¥${order.amount}？` });
+		const res = await uni.showModal({ title: "确认支付", content: `确认支付 ¥${order.amount}？` });
 		if (!res.confirm) return;
 		try {
 			await orderApi.pay(order.id);
-			uni.showToast({ title: '支付成功', icon: 'success' });
+			uni.showToast({ title: "支付成功", icon: "success" });
 			fetchOrders();
-		} catch {
+		} catch (e) {
 			/* ignore */
 		}
 	}
 
 	async function handleRefund(order) {
-		const res = await uni.showModal({ title: '确认退款', content: '确认申请退款？' });
+		const res = await uni.showModal({ title: "确认退款", content: "确认申请退款？" });
 		if (!res.confirm) return;
 		try {
-			await orderApi.refund(order.id, '用户申请退款');
-			uni.showToast({ title: '退款成功', icon: 'success' });
+			await orderApi.refund(order.id, "用户申请退款");
+			uni.showToast({ title: "退款成功", icon: "success" });
 			fetchOrders();
-		} catch {
+		} catch (e) {
 			/* ignore */
 		}
 	}
