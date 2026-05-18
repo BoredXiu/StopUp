@@ -1,0 +1,50 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules/
+.npm/
+# package-lock.json
+# yarn.lock
+
+# production (构建后的代码)
+dist/
+dist-ssr/
+unpackage/
+www/
+
+# local env files (本地环境变量)
+.env
+
+
+# 小程序项目配置文件 (通常包含个人 appid 和本地设置)
+project.config.json
+project.private.config.json
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files (日志文件)
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files (编辑器临时文件)
+*.swp
+*.swo
+*~

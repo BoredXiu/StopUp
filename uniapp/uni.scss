@@ -1,0 +1,50 @@
+/* 主题色 */
+$uni-color-primary: #409EFF;
+$uni-color-success: #67C23A;
+$uni-color-warning: #E6A23C;
+$uni-color-danger: #F56C6C;
+$uni-color-info: #909399;
+
+/* 文字色 */
+$uni-text-color: #333333;
+$uni-text-color-grey: #999999;
+$uni-text-color-placeholder: #C0C4CC;
+$uni-text-color-inverse: #FFFFFF;
+
+/* 背景色 */
+$uni-bg-color: #FFFFFF;
+$uni-bg-color-grey: #F5F5F5;
+$uni-bg-color-hover: #F2F6FC;
+$uni-bg-color-mask: rgba(0, 0, 0, 0.4);
+
+/* 边框色 */
+$uni-border-color: #EBEEF5;
+$uni-border-color-dark: #DCDFE6;
+
+/* 尺寸 */
+$uni-spacing-sm: 12rpx;
+$uni-spacing-base: 20rpx;
+$uni-spacing-lg: 30rpx;
+$uni-spacing-xl: 40rpx;
+
+/* 圆角 */
+$uni-border-radius-sm: 4rpx;
+$uni-border-radius-base: 8rpx;
+$uni-border-radius-lg: 12rpx;
+$uni-border-radius-round: 9999rpx;
+
+/* 字体大小 */
+$uni-font-size-sm: 24rpx;
+$uni-font-size-base: 28rpx;
+$uni-font-size-lg: 32rpx;
+$uni-font-size-xl: 36rpx;
+
+/* 阴影 */
+$uni-shadow-base: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+$uni-shadow-lg: 0 4rpx 24rpx rgba(0, 0, 0, 0.12);
+
+/* 页面通用 */
+page {
+  background-color: $uni-bg-color-grey;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

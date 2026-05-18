@@ -1,0 +1,30 @@
+{
+	"name": "spotup-server",
+	"version": "1.0.0",
+	"description": "拼个场 - 后端API服务",
+	"main": "src/app.js",
+	"scripts": {
+		"start": "node src/app.js",
+		"dev": "nodemon src/app.js",
+		"db:init": "node src/scripts/initDb.js"
+	},
+	"dependencies": {
+		"bcryptjs": "^2.4.3",
+		"cors": "^2.8.5",
+		"dotenv": "^16.3.1",
+		"express": "^4.18.2",
+		"express-async-errors": "^3.1.1",
+		"express-rate-limit": "^7.1.4",
+		"helmet": "^7.1.0",
+		"joi": "^17.11.0",
+		"jsonwebtoken": "^9.0.2",
+		"morgan": "^1.10.0",
+		"multer": "^1.4.5-lts.1",
+		"mysql2": "^3.6.5",
+		"uuid": "^9.0.0",
+		"winston": "^3.11.0"
+	},
+	"devDependencies": {
+		"nodemon": "^3.0.2"
+	}
+}

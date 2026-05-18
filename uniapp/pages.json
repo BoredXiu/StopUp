@@ -1,0 +1,86 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": { "navigationBarTitleText": "拼个场" }
+    },
+    {
+      "path": "pages/match/detail",
+      "style": { "navigationBarTitleText": "球局详情" }
+    },
+    {
+      "path": "pages/match/create",
+      "style": { "navigationBarTitleText": "创建球局" }
+    },
+    {
+      "path": "pages/venue/list",
+      "style": { "navigationBarTitleText": "场馆列表" }
+    },
+    {
+      "path": "pages/venue/detail",
+      "style": { "navigationBarTitleText": "场馆详情" }
+    },
+    {
+      "path": "pages/user/profile",
+      "style": { "navigationBarTitleText": "我的" }
+    },
+    {
+      "path": "pages/user/matches",
+      "style": { "navigationBarTitleText": "我的球局" }
+    },
+    {
+      "path": "pages/user/orders",
+      "style": { "navigationBarTitleText": "我的订单" }
+    },
+    {
+      "path": "pages/user/credit",
+      "style": { "navigationBarTitleText": "信用记录" }
+    },
+    {
+      "path": "pages/user/notifications",
+      "style": { "navigationBarTitleText": "消息通知" }
+    },
+    {
+      "path": "pages/login/index",
+      "style": { "navigationBarTitleText": "登录" }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "拼个场",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F5F5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#409EFF",
+    "borderStyle": "black",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "static/tabbar/home.png",
+        "selectedIconPath": "static/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/venue/list",
+        "text": "场馆",
+        "iconPath": "static/tabbar/venue.png",
+        "selectedIconPath": "static/tabbar/venue-active.png"
+      },
+      {
+        "pagePath": "pages/user/profile",
+        "text": "我的",
+        "iconPath": "static/tabbar/user.png",
+        "selectedIconPath": "static/tabbar/user-active.png"
+      }
+    ]
+  },
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "@/components/u-$1/u-$1.vue"
+    }
+  }
+}
