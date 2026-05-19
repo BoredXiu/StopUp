@@ -1,6 +1,7 @@
 const MatchModel = require("../models/Match");
 const UserModel = require("../models/User");
 const OrderModel = require("../models/Order");
+const OrderService = require("../services/OrderService");
 const NotificationModel = require("../models/Notification");
 const CreditLogModel = require("../models/CreditLog");
 const { BusinessError, NotFoundError } = require("../utils/errors");
@@ -63,13 +64,11 @@ const MatchService = {
 			     (m.start_time < ? AND m.end_time > ?) OR
 			     (m.start_time >= ? AND m.start_time < ?)
 			   )`,
-			[userId, matchId, match.match_date, match.end_time, match.start_time, match.start_time, match.end_time]
+			[userId, matchId, match.match_date, match.end_time, match.start_time, match.start_time, match.end_time],
 		);
 		if (conflicts.length > 0) {
 			const conflict = conflicts[0];
-			throw new BusinessError(
-				`时间冲突：您已报名了同日的「${conflict.title}」(${conflict.start_time}-${conflict.end_time})，请勿重复报名`
-			);
+			throw new BusinessError(`时间冲突：您已报名了同日的「${conflict.title}」(${conflict.start_time}-${conflict.end_time})，请勿重复报名`);
 		}
 
 		await MatchModel.addMember(matchId, userId, 2);
@@ -78,6 +77,17 @@ const MatchService = {
 		const updatedMatch = await MatchModel.findById(matchId);
 		if (updatedMatch.current_players >= updatedMatch.max_players) {
 			await MatchModel.update(matchId, { status: 2 });
+		}
+
+		// 自动创建订单（若场局需要付费）
+		let order = null;
+		if (match.fee_type !== 3 && match.per_person_fee > 0) {
+			try {
+				order = await OrderService.createOrder(matchId, userId);
+			} catch (_err) {
+				// 订单创建失败不阻塞报名流程
+				console.error("自动创建订单失败:", _err.message);
+			}
 		}
 
 		await NotificationModel.create({
@@ -89,7 +99,7 @@ const MatchService = {
 			related_type: "match",
 		});
 
-		return updatedMatch;
+		return { match: updatedMatch, order };
 	},
 
 	async leaveMatch(matchId, userId) {

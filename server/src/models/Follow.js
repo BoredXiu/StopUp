@@ -1,9 +1,10 @@
 const db = require('../config/database');
+const { BusinessError } = require('../utils/errors');
 
 const FollowModel = {
   async follow(followerId, followedId) {
     if (followerId === followedId) {
-      throw new Error('不能关注自己');
+      throw new BusinessError('不能关注自己');
     }
     await db.query(
       'INSERT IGNORE INTO follows (follower_id, followed_id) VALUES (?, ?)',

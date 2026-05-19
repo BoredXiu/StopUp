@@ -25,6 +25,17 @@ app.use(morgan("dev"));
 // 静态文件
 app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
 
+// tmp 临时文件目录清理（每10分钟）
+const UploadController = require("./controllers/UploadController");
+setInterval(
+	() => {
+		UploadController.cleanTmp();
+	},
+	10 * 60 * 1000,
+);
+// 启动后立即执行一次初始清理
+setTimeout(() => UploadController.cleanTmp(), 1000);
+
 // 全局限流
 const globalLimiter = rateLimit({
 	windowMs: 15 * 60 * 1000,

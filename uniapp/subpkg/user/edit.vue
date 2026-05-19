@@ -120,14 +120,16 @@
 
 <script setup lang="ts">
 	import { ref, reactive, computed, onMounted } from "vue";
-	import { userApi } from "@/api";
+	import { userApi, uploadApi } from "@/api";
 	import { useUserStore } from "@/store/user";
 	import { REGION_DATA } from "@/data/regions";
+	import { formatDate } from "@/utils/format";
 
 	const userStore = useUserStore();
 	const saving = ref(false);
+	const tmpAvatarFilename = ref("");
 
-	const genderOptions = ["男", "女"];
+	const genderOptions = ["请选择", "男", "女"];
 
 	const form = reactive({
 		avatar: "",
@@ -144,11 +146,11 @@
 	});
 
 	const genderIndex = computed(() => {
-		return form.gender === 2 ? 1 : 0;
+		return form.gender;
 	});
 
 	function onGenderPick(e: any): void {
-		form.gender = e.detail.value === 0 ? 1 : 2;
+		form.gender = e.detail.value;
 	}
 
 	function onBirthdayPick(e: any): void {
@@ -259,13 +261,23 @@
 		regionDisplay.value = "";
 	}
 
-	function chooseAvatar(): void {
+	async function chooseAvatar(): void {
 		uni.chooseImage({
 			count: 1,
 			sizeType: ["compressed"],
 			sourceType: ["album", "camera"],
-			success: (res: any) => {
-				form.avatar = res.tempFilePaths[0];
+			success: async (res: any) => {
+				try {
+					const uploadRes = await uploadApi.uploadTmp(res.tempFilePaths[0]);
+					const tmpUrl = uploadRes.data.url;
+					const tmpFilename = uploadRes.data.filename;
+					if (tmpUrl) {
+						form.avatar = tmpUrl;
+						tmpAvatarFilename.value = tmpFilename;
+					}
+				} catch {
+					uni.showToast({ title: "图片上传失败", icon: "none" });
+				}
 			},
 		});
 	}
@@ -277,32 +289,47 @@
 		}
 		saving.value = true;
 		try {
+			// 若有临时头像，先确认上传到正式目录
+			let finalAvatar = form.avatar;
+			if (tmpAvatarFilename.value && form.avatar && form.avatar.includes("/uploads/tmp/")) {
+				try {
+					const confirmRes = await uploadApi.confirm(tmpAvatarFilename.value);
+					finalAvatar = confirmRes.data.url;
+				} catch {
+					uni.showToast({ title: "头像保存失败，请重试", icon: "none" });
+					saving.value = false;
+					return;
+				}
+			}
+
+			// 显式发送所有字段，用 null 表示"清空"
 			const data: Record<string, any> = {
 				nickname: form.nickname.trim(),
-				gender: form.gender || undefined,
-				birthday: form.birthday || undefined,
-				city: form.city || undefined,
-				bio: form.bio.trim() || undefined,
+				gender: form.gender,
+				birthday: form.birthday || null,
+				city: form.city || null,
+				bio: form.bio.trim() || null,
 			};
-			if (form.avatar) data.avatar = form.avatar;
+			if (finalAvatar) data.avatar = finalAvatar;
+			else data.avatar = null;
+
 			await userApi.updateProfile(data);
 			await userStore.fetchProfile();
 			uni.showToast({ title: "保存成功", icon: "success" });
 			setTimeout(() => uni.navigateBack(), 800);
-		} catch (_) {
-			/* ignore */
+		} catch (err: any) {
+			const msg = err?.message || "保存失败，请稍后重试";
+			uni.showToast({ title: msg, icon: "none" });
 		} finally {
 			saving.value = false;
 		}
 	}
 
-	function formatDate(dateStr: string): string {
-		if (!dateStr) return "";
-		const match = dateStr.match(/^\d{4}-\d{2}-\d{2}/);
-		return match ? match[0] : dateStr;
-	}
-
-	onMounted(() => {
+	onMounted(async () => {
+		// 确保用户数据已加载
+		if (!userStore.user) {
+			await userStore.fetchProfile();
+		}
 		if (userStore.user) {
 			form.avatar = userStore.user.avatar || "";
 			form.nickname = userStore.user.nickname || "";

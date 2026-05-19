@@ -277,6 +277,8 @@
 				uni.showToast({ title: "验证码错误，请重试", icon: "none" });
 			} else if (msg.includes("时间冲突") || msg.includes("冲突")) {
 				uni.showToast({ title: msg, icon: "none", duration: 3000 });
+			} else if (msg) {
+				uni.showToast({ title: msg, icon: "none" });
 			}
 		} finally {
 			submitting.value = false;

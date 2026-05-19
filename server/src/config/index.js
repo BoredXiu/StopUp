@@ -19,7 +19,9 @@ module.exports = {
 	},
 	upload: {
 		dir: process.env.UPLOAD_DIR || "uploads",
+		tmpDir: process.env.UPLOAD_TMP_DIR || "uploads/tmp",
 		maxFileSize: parseInt(process.env.MAX_FILE_SIZE) || 5 * 1024 * 1024,
+		tmpTtlMs: parseInt(process.env.UPLOAD_TMP_TTL) || 10 * 60 * 1000,
 	},
 	cors: {
 		origin: process.env.CORS_ORIGIN || "http://localhost:5173",

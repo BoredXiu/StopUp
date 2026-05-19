@@ -1,54 +1,93 @@
 {
-	"pages": [
-		{
+	"pages": [{
 			"path": "pages/index/index",
-			"style": { "navigationBarTitleText": "拼个场" }
+			"style": {
+				"navigationBarTitleText": "拼个场"
+			}
 		},
 		{
 			"path": "pages/venue/list",
-			"style": { "navigationBarTitleText": "场馆列表" }
+			"style": {
+				"navigationBarTitleText": "场馆列表"
+			}
 		},
 		{
 			"path": "pages/user/profile",
-			"style": { "navigationBarTitleText": "我的" }
+			"style": {
+				"navigationBarTitleText": "我的"
+			}
 		}
 	],
-	"subPackages": [
-		{
-			"root": "subpkg",
-			"pages": [
-				{
-					"path": "match/detail",
-					"style": { "navigationBarTitleText": "场局详情" }
-				},
-				{
-					"path": "match/create",
-					"style": { "navigationBarTitleText": "创建场局" }
-				},
-				{
-					"path": "venue/detail",
-					"style": { "navigationBarTitleText": "场馆详情" }
-				},
-				{
-					"path": "user/matches",
-					"style": { "navigationBarTitleText": "我参与的场局" }
-				},
-				{
-					"path": "user/orders",
-					"style": { "navigationBarTitleText": "我的订单" }
-				},
-				{
-					"path": "user/credit",
-					"style": { "navigationBarTitleText": "信用记录" }
-				},
-				{ "path": "user/notifications", "style": { "navigationBarTitleText": "消息通知" } },
-				{ "path": "user/edit", "style": { "navigationBarTitleText": "编辑资料" } },
-				{ "path": "user/report", "style": { "navigationBarTitleText": "举报" } },
-				{ "path": "user/feedback", "style": { "navigationBarTitleText": "意见反馈" } },
-				{ "path": "login/index", "style": { "navigationBarTitleText": "登录" } }
-			]
-		}
-	],
+	"subPackages": [{
+		"root": "subpkg",
+		"pages": [{
+				"path": "match/detail",
+				"style": {
+					"navigationBarTitleText": "场局详情"
+				}
+			},
+			{
+				"path": "match/create",
+				"style": {
+					"navigationBarTitleText": "创建场局"
+				}
+			},
+			{
+				"path": "venue/detail",
+				"style": {
+					"navigationBarTitleText": "场馆详情"
+				}
+			},
+			{
+				"path": "user/matches",
+				"style": {
+					"navigationBarTitleText": "我参与的场局"
+				}
+			},
+			{
+				"path": "user/orders",
+				"style": {
+					"navigationBarTitleText": "我的订单"
+				}
+			},
+			{
+				"path": "user/credit",
+				"style": {
+					"navigationBarTitleText": "信用记录"
+				}
+			},
+			{
+				"path": "user/notifications",
+				"style": {
+					"navigationBarTitleText": "消息通知"
+				}
+			},
+			{
+				"path": "user/edit",
+				"style": {
+					"navigationBarTitleText": "编辑资料"
+				}
+			},
+			{
+				"path": "user/report",
+				"style": {
+					"navigationBarTitleText": "举报"
+				}
+			},
+			{
+				"path": "user/feedback",
+				"style": {
+					"navigationBarTitleText": "意见反馈"
+				}
+			},
+			{
+				"path": "login/index",
+				"style": {
+					"navigationBarTitleText": "登录"
+				}
+			}
+		]
+	}],
 	"preloadRule": {
 		"pages/index/index": {
 			"network": "all",
@@ -66,8 +105,7 @@
 		"selectedColor": "#409EFF",
 		"borderStyle": "black",
 		"backgroundColor": "#FFFFFF",
-		"list": [
-			{
+		"list": [{
 				"pagePath": "pages/index/index",
 				"text": "首页",
 				"iconPath": "static/tabbar/home.png",
@@ -81,7 +119,7 @@
 			},
 			{
 				"pagePath": "pages/user/profile",
-				"text": "我的",
+				"text": "个人中心",
 				"iconPath": "static/tabbar/user.png",
 				"selectedIconPath": "static/tabbar/user-active.png"
 			}

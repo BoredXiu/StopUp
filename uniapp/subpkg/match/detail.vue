@@ -16,8 +16,9 @@
 					<text
 						class="tag"
 						:class="statusClass"
-						>{{ statusText }}</text
 					>
+						{{ statusText }}
+					</text>
 				</view>
 			</view>
 		</view>
@@ -42,8 +43,9 @@
 				<text
 					class="info-value link"
 					@tap="goVenue"
-					>{{ match.venueName }}</text
 				>
+					{{ match.venueName }}
+				</text>
 			</view>
 			<view class="info-row">
 				<text class="info-label">费用</text>
@@ -92,8 +94,9 @@
 							<text
 								v-if="m.role === 1"
 								class="creator-tag"
-								>创建者</text
 							>
+								创建者
+							</text>
 						</text>
 						<text class="member-credit">信用 {{ m.creditScore }}</text>
 					</view>
@@ -114,6 +117,13 @@
 				</button>
 			</block>
 			<block v-else-if="match.status === 1 && isJoined && !isCreator">
+				<button
+					v-if="pendingOrderId"
+					class="btn-primary"
+					@tap="handlePayOrder"
+				>
+					去支付 ¥{{ pendingOrderAmount }}
+				</button>
 				<button
 					class="btn-warning"
 					@tap="handleLeave"
@@ -142,24 +152,24 @@
 </template>
 
 <script setup lang="ts">
-	import { ref, computed } from "vue";
-	import { onLoad } from "@dcloudio/uni-app";
-	import { matchApi } from "@/api";
-	import { getFeeTypeText } from "@/utils/format";
-	import { useUserStore } from "@/store/user";
-	import type { Match, MatchMember } from "@/types";
+	import { ref, computed } from 'vue';
+	import { onLoad } from '@dcloudio/uni-app';
+	import { matchApi } from '@/api';
+	import { getFeeTypeText } from '@/utils/format';
+	import { useUserStore } from '@/store/user';
+	import type { Match, MatchMember } from '@/types';
 
 	const VENUE_PICS = [
-		"https://picsum.photos/seed/match1/400/300",
-		"https://picsum.photos/seed/match2/400/300",
-		"https://picsum.photos/seed/match3/400/300",
-		"https://picsum.photos/seed/match4/400/300",
-		"https://picsum.photos/seed/match5/400/300",
-		"https://picsum.photos/seed/match6/400/300",
-		"https://picsum.photos/seed/match7/400/300",
-		"https://picsum.photos/seed/match8/400/300",
-		"https://picsum.photos/seed/match9/400/300",
-		"https://picsum.photos/seed/match10/400/300",
+		'https://picsum.photos/seed/match1/400/300',
+		'https://picsum.photos/seed/match2/400/300',
+		'https://picsum.photos/seed/match3/400/300',
+		'https://picsum.photos/seed/match4/400/300',
+		'https://picsum.photos/seed/match5/400/300',
+		'https://picsum.photos/seed/match6/400/300',
+		'https://picsum.photos/seed/match7/400/300',
+		'https://picsum.photos/seed/match8/400/300',
+		'https://picsum.photos/seed/match9/400/300',
+		'https://picsum.photos/seed/match10/400/300'
 	];
 
 	function getVenueImage(seed: number): string {
@@ -170,18 +180,20 @@
 	const match = ref<Match | null>(null);
 	const members = ref<MatchMember[]>([]);
 	const avatarFailed = ref<Record<number, boolean>>({});
+	const pendingOrderId = ref(0);
+	const pendingOrderAmount = ref(0);
 
 	const statusText = computed(() => {
-		const map: Record<number, string> = { 1: "报名中", 2: "已满员", 3: "已开始", 4: "已结束", 5: "已取消" };
-		return map[(match.value && match.value.status) || 0] || "未知";
+		const map: Record<number, string> = { 1: '报名中', 2: '已满员', 3: '已开始', 4: '已结束', 5: '已取消' };
+		return map[(match.value && match.value.status) || 0] || '未知';
 	});
 	const statusClass = computed(() => {
-		const map: Record<number, string> = { 1: "open", 2: "full", 3: "started", 4: "ended", 5: "cancelled" };
-		return map[(match.value && match.value.status) || 0] || "";
+		const map: Record<number, string> = { 1: 'open', 2: 'full', 3: 'started', 4: 'ended', 5: 'cancelled' };
+		return map[(match.value && match.value.status) || 0] || '';
 	});
 	const levelText = computed(() => {
-		const map: Record<number, string> = { 1: "入门", 2: "初级", 3: "中级", 4: "高级", 5: "专业" };
-		return map[(match.value && match.value.levelRequired) || 0] || "不限";
+		const map: Record<number, string> = { 1: '入门', 2: '初级', 3: '中级', 4: '高级', 5: '专业' };
+		return map[(match.value && match.value.levelRequired) || 0] || '不限';
 	});
 	const isCreator = computed(() => (match.value && match.value.creatorId) === (userStore.user && userStore.user.id));
 	const isJoined = computed(() => members.value.some((m) => m.userId === (userStore.user && userStore.user.id)));
@@ -195,46 +207,87 @@
 	async function handleJoin(): Promise<void> {
 		if (!match.value) return;
 		try {
-			await matchApi.join(match.value.id);
-		} catch (_) {
-			/* mock */
+			const res = await matchApi.join(match.value.id);
+			const data = res.data as any;
+			const order = data?.order;
+			const hasOrder = order && order.id;
+
+			if (match.value) {
+				match.value.isJoined = true;
+				match.value.currentPlayers = Math.min(match.value.maxPlayers, (match.value.currentPlayers || 0) + 1);
+				if (hasOrder) {
+					pendingOrderId.value = order.id;
+					pendingOrderAmount.value = order.amount || match.value.perPersonFee || 0;
+				}
+			}
+
+			await fetchDetail();
+
+			if (hasOrder) {
+				const payNow = await uni.showModal({
+					title: '报名成功',
+					content: `本场局需支付 ¥${order.amount}，是否立即支付？`,
+					confirmText: '立即支付',
+					cancelText: '稍后支付'
+				});
+				if (payNow.confirm) {
+					await handlePayOrder();
+				} else {
+					uni.showToast({ title: '报名成功，请尽快支付', icon: 'success' });
+				}
+			} else {
+				uni.showToast({ title: '报名成功', icon: 'success' });
+			}
+		} catch (err: any) {
+			const msg = err?.message || '报名失败，请稍后重试';
+			uni.showToast({ title: msg, icon: 'none' });
 		}
-		uni.showToast({ title: "报名成功", icon: "success" });
-		if (match.value) {
-			match.value.isJoined = true;
-			match.value.currentPlayers = (match.value.currentPlayers || 0) + 1;
+	}
+	async function handlePayOrder(): Promise<void> {
+		if (!pendingOrderId.value) return;
+		try {
+			const { orderApi } = await import('@/api');
+			await orderApi.pay(pendingOrderId.value);
+			uni.showToast({ title: '支付成功', icon: 'success' });
+			pendingOrderId.value = 0;
+			pendingOrderAmount.value = 0;
+		} catch (err: any) {
+			const msg = err?.message || '支付失败';
+			uni.showToast({ title: msg, icon: 'none' });
 		}
 	}
 
 	async function handleLeave(): Promise<void> {
 		if (!match.value) return;
-		const res = await uni.showModal({ title: "确认退出？", content: "退出场局可能影响信用分" });
+		const res = await uni.showModal({ title: '确认退出？', content: '退出场局可能影响信用分' });
 		if (!res.confirm) return;
 		try {
 			await matchApi.leave(match.value.id);
-		} catch (_) {
-			/* mock */
-		}
-		uni.showToast({ title: "已退出", icon: "success" });
-		if (match.value) {
-			match.value.isJoined = false;
-			match.value.currentPlayers = Math.max(0, (match.value.currentPlayers || 0) - 1);
-			members.value = members.value.filter((m) => m.userId !== (userStore.user && userStore.user.id));
+			uni.showToast({ title: '已退出', icon: 'success' });
+			if (match.value) {
+				match.value.isJoined = false;
+				match.value.currentPlayers = Math.max(0, (match.value.currentPlayers || 0) - 1);
+				members.value = members.value.filter((m) => m.userId !== (userStore.user && userStore.user.id));
+			}
+		} catch (err: any) {
+			const msg = err?.message || '退出失败，请稍后重试';
+			uni.showToast({ title: msg, icon: 'none' });
 		}
 	}
 
 	async function handleCancel(): Promise<void> {
 		if (!match.value) return;
-		const res = await uni.showModal({ title: "确认取消场局？", content: "取消场局将影响信用分" });
+		const res = await uni.showModal({ title: '确认取消场局？', content: '取消场局将影响信用分' });
 		if (!res.confirm) return;
 		try {
-			await matchApi.cancel(match.value.id, "创建者取消");
-		} catch (_) {
-			/* mock */
-		}
-		uni.showToast({ title: "已取消", icon: "success" });
-		if (match.value) {
-			match.value.status = 5;
+			await matchApi.cancel(match.value.id, '创建者取消');
+			uni.showToast({ title: '已取消', icon: 'success' });
+			if (match.value) {
+				match.value.status = 5;
+			}
+		} catch (err: any) {
+			const msg = err?.message || '取消失败，请稍后重试';
+			uni.showToast({ title: msg, icon: 'none' });
 		}
 	}
 
@@ -250,29 +303,30 @@
 		} catch (_) {
 			match.value = mockMatchDetail(id);
 			members.value = mockMembers(id);
+			uni.showToast({ title: '当前为演示数据', icon: 'none', duration: 2000 });
 		}
 	}
 
 	function mockMatchDetail(id: number): Match {
-		const sportNames = ["篮球", "足球", "羽毛球", "网球", "乒乓球", "排球", "跑步", "游泳"];
-		const sportIcons = ["🏀", "⚽", "🏸", "🎾", "🏓", "🏐", "🏊", "🏃"];
+		const sportNames = ['篮球', '足球', '羽毛球', '网球', '乒乓球', '排球', '跑步', '游泳'];
+		const sportIcons = ['🏀', '⚽', '🏸', '🎾', '🏓', '🏐', '🏊', '🏃'];
 		const idx = id % 8;
 		return {
 			id,
-			title: ["周末篮球3v3", "周五羽毛球双打", "晚间足球友谊赛", "网球单打挑战", "乒乓对抗赛", "排球娱乐局", "晨跑打卡", "游泳训练"][idx],
+			title: ['周末篮球3v3', '周五羽毛球双打', '晚间足球友谊赛', '网球单打挑战', '乒乓对抗赛', '排球娱乐局', '晨跑打卡', '游泳训练'][idx],
 			sportId: idx + 1,
 			sportName: sportNames[idx],
 			sportIcon: sportIcons[idx],
 			venueId: idx + 1,
-			venueName: ["星海体育中心", "阳光运动馆", "奥体中心", "城市运动公园", "大学城体育馆", "社区运动场", "蓝天体育馆", "绿茵球场"][idx],
-			venueAddress: "北京市朝阳区某路" + id + "号",
-			venueCity: "北京",
+			venueName: ['星海体育中心', '阳光运动馆', '奥体中心', '城市运动公园', '大学城体育馆', '社区运动场', '蓝天体育馆', '绿茵球场'][idx],
+			venueAddress: '北京市朝阳区某路' + id + '号',
+			venueCity: '北京',
 			creatorId: 1,
-			creatorNickname: "张三",
-			creatorAvatar: "",
-			matchDate: "2026-05-20",
-			startTime: "14:00",
-			endTime: "16:00",
+			creatorNickname: '张三',
+			creatorAvatar: '',
+			matchDate: '2026-05-20',
+			startTime: '14:00',
+			endTime: '16:00',
 			maxPlayers: 12,
 			minPlayers: 4,
 			currentPlayers: 5,
@@ -281,28 +335,28 @@
 			perPersonFee: 30,
 			levelRequired: 0,
 			genderRequired: 0,
-			description: "一起来运动吧！无论你是新手还是老手，都欢迎加入。",
-			coverImage: "",
+			description: '一起来运动吧！无论你是新手还是老手，都欢迎加入。',
+			coverImage: '',
 			status: 1,
-			cancelReason: "",
+			cancelReason: '',
 			isFeatured: idx < 3 ? 1 : 0,
 			viewCount: 100 + id,
 			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString()
 		};
 	}
 
 	function mockMembers(matchId: number): MatchMember[] {
-		const names = ["张三", "李四", "王五", "赵六", "陈七"];
+		const names = ['张三', '李四', '王五', '赵六', '陈七'];
 		return names.map((name, i) => ({
 			id: i + 1,
 			userId: i + 1,
 			nickname: name,
-			avatar: "",
+			avatar: '',
 			creditScore: 100,
 			role: i === 0 ? 1 : 0,
 			status: 1,
-			joinedAt: new Date().toISOString(),
+			joinedAt: new Date().toISOString()
 		}));
 	}
 

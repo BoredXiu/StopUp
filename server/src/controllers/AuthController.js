@@ -1,5 +1,6 @@
 const AuthService = require("../services/AuthService");
 const { success } = require("../utils/response");
+const { BusinessError } = require("../utils/errors");
 
 const captchaStore = new Map();
 
@@ -109,7 +110,7 @@ const AuthController = {
 	async loginByPhone(req, res) {
 		const { phone, password, captchaId, captchaCode, rememberMe } = req.body;
 		if (!AuthController.verifyCaptcha(captchaId, captchaCode)) {
-			return res.json({ code: 400, message: "图形验证码错误", data: null });
+			throw new BusinessError("图形验证码错误");
 		}
 		const result = await AuthService.loginByPhone(phone, password, !!rememberMe);
 		res.json(success(result, "登录成功"));
@@ -125,7 +126,7 @@ const AuthController = {
 	async register(req, res) {
 		const { phone, password, nickname, captchaId, captchaCode, rememberMe } = req.body;
 		if (!AuthController.verifyCaptcha(captchaId, captchaCode)) {
-			return res.json({ code: 400, message: "图形验证码错误", data: null });
+			throw new BusinessError("图形验证码错误");
 		}
 		const result = await AuthService.registerByPhone(phone, password, nickname, !!rememberMe);
 		res.json(success(result, "注册成功"));

@@ -24,6 +24,14 @@
 						<text class="pick-arrow">▾</text>
 					</view>
 				</picker>
+				<view
+					class="clear-region"
+					v-if="displayRegion"
+					@tap.stop="clearRegion"
+					hover-class="clear-region-hover"
+				>
+					<text class="clear-icon">✕</text>
+				</view>
 			</view>
 			<view class="search-bar">
 				<input
@@ -129,9 +137,9 @@
 					</view>
 					<view class="match-right">
 						<text class="match-price">
-								<template v-if="match.feeType === 3">免费</template>
-								<template v-else>¥{{ match.perPersonFee || 0 }}</template>
-							</text>
+							<template v-if="match.feeType === 3">免费</template>
+							<template v-else>¥{{ match.perPersonFee || 0 }}</template>
+						</text>
 						<text class="match-count">{{ match.currentPlayers }}/{{ match.maxPlayers }}人</text>
 						<text
 							class="match-status"
@@ -183,8 +191,8 @@
 	import { ref, computed, onMounted } from "vue";
 	import { onShow } from "@dcloudio/uni-app";
 	import { matchApi, venueApi, sportApi } from "@/api";
-import { getFeeTypeText } from "@/utils/format";
-import type { Sport, Match, Venue } from "@/types";
+	import { getFeeTypeText } from "@/utils/format";
+	import type { Sport, Match, Venue } from "@/types";
 	import { REGION_DATA } from "@/data/regions";
 
 	const MOCK_SPORTS: Sport[] = [
@@ -367,6 +375,18 @@ import type { Sport, Match, Venue } from "@/types";
 		}
 	}
 
+	function clearRegion(): void {
+		regionPickValue.value = [0, 0, 0];
+		currentProvince.value = "";
+		currentCity.value = "";
+		currentDistrict.value = "";
+		displayRegion.value = "";
+		uni.setStorageSync("currentProvince", "");
+		uni.setStorageSync("currentCity", "");
+		uni.setStorageSync("currentDistrict", "");
+		loadData();
+	}
+
 	function goSearch(): void {
 		loadData(keyword.value);
 	}
@@ -496,6 +516,7 @@ import type { Sport, Match, Venue } from "@/types";
 			latestMatches.value = generateMockMatches(false);
 			hotVenues.value = generateMockVenues();
 			sports.value = MOCK_SPORTS;
+			uni.showToast({ title: "当前为演示数据", icon: "none", duration: 2000 });
 		}
 
 		if (activeSport.value) {
@@ -603,6 +624,25 @@ import type { Sport, Match, Venue } from "@/types";
 	.pick-arrow {
 		font-size: 12px;
 		opacity: 0.5;
+	}
+	.clear-region {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 44px;
+		height: 44px;
+		border-radius: 50%;
+		background: rgba(255, 255, 255, 0.2);
+		flex-shrink: 0;
+	}
+	.clear-region-hover {
+		background: rgba(255, 255, 255, 0.35);
+		transform: scale(0.92);
+	}
+	.clear-icon {
+		font-size: 14px;
+		color: #fff;
+		font-weight: 700;
 	}
 	.search-bar {
 		display: flex;

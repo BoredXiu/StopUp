@@ -19,7 +19,7 @@
 				class="order-card"
 			>
 				<view class="order-header">
-					<text class="order-no">{{ order.orderNo }}</text>
+					<text class="order-no">订单号: {{ order.orderNo }}</text>
 					<text
 						class="order-status"
 						:class="getStatusClass(order.status)"
@@ -30,7 +30,18 @@
 				<view class="order-body">
 					<view class="order-info">
 						<text class="order-title">{{ order.matchTitle }}</text>
-						<text class="order-meta">{{ order.sportName }} · {{ order.matchDate }}</text>
+						<text class="order-meta">{{ order.sportName }} · {{ order.matchDate }} {{ order.startTime }}</text>
+						<text
+							class="order-meta"
+							v-if="order.venueName"
+							>📍 {{ order.venueName }}</text
+						>
+						<text class="order-time">下单时间: {{ order.createdAt }}</text>
+						<text
+							class="order-time"
+							v-if="order.status === 2 && order.paidAt"
+							>支付时间: {{ order.paidAt }}</text
+						>
 					</view>
 					<text class="order-amount">¥{{ order.amount }}</text>
 				</view>
@@ -122,8 +133,14 @@
 			...raw,
 			matchTitle: raw.match_title || raw.matchTitle || "",
 			sportName: raw.sport_name || raw.sportName || "",
+			venueName: raw.venue_name || raw.venueName || "",
 			matchDate: raw.match_date || raw.matchDate || "",
+			startTime: raw.start_time || raw.startTime || "",
+			endTime: raw.end_time || raw.endTime || "",
 			orderNo: raw.order_no || raw.orderNo || "",
+			paidAt: raw.paid_at || raw.paidAt || null,
+			refundedAt: raw.refunded_at || raw.refundedAt || null,
+			createdAt: raw.created_at || raw.createdAt || "",
 		};
 	}
 
@@ -237,6 +254,12 @@
 		font-size: 12px;
 		color: #888;
 		display: block;
+	}
+	.order-time {
+		font-size: 11px;
+		color: #aaa;
+		display: block;
+		margin-top: 2px;
 	}
 	.order-amount {
 		font-size: 16px;

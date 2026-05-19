@@ -33,12 +33,9 @@ function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
 						return;
 					}
 					uni.removeStorageSync("token");
-					try {
-						const { useUserStore } = require("@/store/user");
-						useUserStore().logout();
-					} catch (_) {}
+					uni.removeStorageSync("user");
 					uni.reLaunch({ url: "/subpkg/login/index" });
-					reject(new Error(data.message));
+					reject(new Error(data.message || "登录已过期，请重新登录"));
 				} else {
 					if (!silent) {
 						uni.showToast({ title: data.message || "请求失败", icon: "none" });
@@ -136,6 +133,31 @@ export const uploadApi = {
 				fail: reject,
 			});
 		});
+	},
+	uploadTmp: (filePath: string) => {
+		return new Promise<ApiResponse<{ url: string; filename: string }>>((resolve, reject) => {
+			uni.uploadFile({
+				url: BASE_URL + "/upload/tmp",
+				filePath,
+				name: "file",
+				header: {
+					Authorization: `Bearer ${uni.getStorageSync("token")}`,
+				},
+				success: (res) => {
+					try {
+						const data = JSON.parse(res.data) as ApiResponse<{ url: string; filename: string }>;
+						if (data.code === 200) resolve(data);
+						else reject(new Error(data.message));
+					} catch {
+						reject(new Error("上传失败"));
+					}
+				},
+				fail: reject,
+			});
+		});
+	},
+	confirm: (filename: string) => {
+		return api.post<{ url: string }>("/upload/confirm", { filename });
 	},
 };
 
