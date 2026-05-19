@@ -2,35 +2,37 @@
 	<view class="page">
 		<view
 			class="profile-header"
-			v-if="userStore.user"
+			v-if="userStore.token"
+			@tap="goProfileEdit"
 		>
 			<image
-				:src="userStore.user.avatar || '/static/default-avatar.png'"
+				:src="(userStore.user && userStore.user.avatar) || '/static/default-avatar.png'"
 				class="avatar"
 				mode="aspectFill"
 			/>
 			<view class="profile-info">
-				<text class="nickname">{{ userStore.user.nickname }}</text>
-				<text class="bio">{{ userStore.user.bio || "这个人很懒，什么都没写..." }}</text>
+				<text class="nickname">{{ (userStore.user && userStore.user.nickname) || "未设置昵称" }}</text>
+				<text class="bio">{{ (userStore.user && userStore.user.bio) || "这个人很懒，什么都没写..." }}</text>
 				<view class="meta">
-					<text v-if="userStore.user.city">{{ userStore.user.city }}</text>
-					<text>信用分: {{ userStore.user.creditScore }}</text>
+					<text v-if="userStore.user && userStore.user.city">{{ userStore.user.city }}</text>
+					<text v-if="userStore.user">信用分: {{ userStore.user.creditScore }}</text>
 				</view>
 			</view>
+			<text class="edit-tip">编辑 ></text>
 		</view>
 
 		<view class="menu-section">
 			<view
 				class="menu-item"
-				@tap="goPage('/pages/user/matches')"
+				@tap="goPage('/subpkg/user/matches')"
 			>
 				<text class="menu-icon">🏀</text>
-				<text class="menu-text">我的球局</text>
+				<text class="menu-text">我参与的场局</text>
 				<text class="menu-arrow">→</text>
 			</view>
 			<view
 				class="menu-item"
-				@tap="goPage('/pages/user/orders')"
+				@tap="goPage('/subpkg/user/orders')"
 			>
 				<text class="menu-icon">💰</text>
 				<text class="menu-text">我的订单</text>
@@ -38,7 +40,7 @@
 			</view>
 			<view
 				class="menu-item"
-				@tap="goPage('/pages/user/credit')"
+				@tap="goPage('/subpkg/user/credit')"
 			>
 				<text class="menu-icon">⭐</text>
 				<text class="menu-text">信用记录</text>
@@ -46,7 +48,7 @@
 			</view>
 			<view
 				class="menu-item"
-				@tap="goPage('/pages/user/notifications')"
+				@tap="goPage('/subpkg/user/notifications')"
 			>
 				<text class="menu-icon">🔔</text>
 				<text class="menu-text">消息通知</text>
@@ -64,11 +66,27 @@
 		<view class="menu-section">
 			<view
 				class="menu-item"
-				@tap="goPage('/pages/match/create')"
+				@tap="goPage('/subpkg/match/create')"
 			>
 				<text class="menu-icon">➕</text>
-				<text class="menu-text">创建球局</text>
+				<text class="menu-text">创建场局</text>
 				<text class="menu-arrow">→</text>
+			</view>
+		</view>
+
+		<view
+			class="menu-section"
+			v-if="userStore.token"
+		>
+			<view
+				class="menu-item logout-item"
+				@tap="handleLogout"
+			>
+				<text
+					class="menu-text"
+					style="color: #f56c6c; text-align: center; flex: none"
+					>退出登录</text
+				>
 			</view>
 		</view>
 
@@ -86,7 +104,7 @@
 	</view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 	import { ref } from "vue";
 	import { onShow } from "@dcloudio/uni-app";
 	import { useUserStore } from "@/store/user";
@@ -95,25 +113,51 @@
 	const userStore = useUserStore();
 	const unreadCount = ref(0);
 
-	function goPage(url) {
+	function goPage(url: string): void {
 		if (!userStore.token) {
-			uni.navigateTo({ url: "/pages/login/index" });
+			uni.navigateTo({ url: "/subpkg/login/index" });
 			return;
 		}
 		uni.navigateTo({ url });
 	}
 
-	function goLogin() {
-		uni.navigateTo({ url: "/pages/login/index" });
+	function goLogin(): void {
+		uni.navigateTo({ url: "/subpkg/login/index" });
+	}
+
+	function goProfileEdit(): void {
+		uni.navigateTo({ url: "/subpkg/user/edit" });
+	}
+
+	function handleLogout(): void {
+		uni.showModal({
+			title: "提示",
+			content: "确定要退出登录吗？",
+			success: (res: any) => {
+				if (res.confirm) {
+					userStore.logout();
+					unreadCount.value = 0;
+				}
+			},
+		});
 	}
 
 	onShow(async () => {
+		const storedToken = uni.getStorageSync("token") as string;
+		if (!storedToken && userStore.token) {
+			userStore.logout();
+			unreadCount.value = 0;
+			return;
+		}
+		if (storedToken && !userStore.token) {
+			userStore.setToken(storedToken);
+		}
 		if (userStore.token) {
 			await userStore.fetchProfile();
 			try {
 				const res = await notificationApi.unreadCount();
 				unreadCount.value = res.data.count;
-			} catch (e) {
+			} catch (_) {
 				/* ignore */
 			}
 		}
@@ -122,21 +166,20 @@
 
 <style scoped>
 	.page {
-		padding: 16px;
+		min-height: 100vh;
+		background: #f5f5f5;
 	}
 	.profile-header {
 		display: flex;
-		align-items: center;
-		gap: 16px;
+		padding: 20px 16px;
 		background: #fff;
-		border-radius: 12px;
-		padding: 24px;
-		margin-bottom: 16px;
+		align-items: center;
 	}
 	.avatar {
-		width: 64px;
-		height: 64px;
+		width: 60px;
+		height: 60px;
 		border-radius: 50%;
+		margin-right: 12px;
 	}
 	.profile-info {
 		flex: 1;
@@ -147,73 +190,74 @@
 		display: block;
 	}
 	.bio {
-		font-size: 13px;
-		color: #999;
-		display: block;
-		margin: 4px 0;
-	}
-	.meta {
-		display: flex;
-		gap: 12px;
 		font-size: 12px;
 		color: #999;
+		display: block;
+		margin: 2px 0;
 	}
-
+	.meta {
+		font-size: 11px;
+		color: #bbb;
+		display: flex;
+		gap: 10px;
+	}
+	.edit-tip {
+		font-size: 12px;
+		color: #bbb;
+		flex-shrink: 0;
+	}
 	.menu-section {
 		background: #fff;
-		border-radius: 12px;
-		margin-bottom: 12px;
+		border-radius: 8px;
+		margin: 10px 12px;
 		overflow: hidden;
 	}
 	.menu-item {
 		display: flex;
 		align-items: center;
-		padding: 16px;
+		padding: 14px 14px;
 		border-bottom: 1px solid #f5f5f5;
 	}
 	.menu-item:last-child {
 		border-bottom: none;
 	}
 	.menu-icon {
-		font-size: 20px;
-		margin-right: 12px;
+		font-size: 18px;
+		margin-right: 10px;
 	}
 	.menu-text {
 		flex: 1;
 		font-size: 15px;
+		color: #333;
 	}
 	.menu-arrow {
+		font-size: 14px;
 		color: #ccc;
 	}
 	.menu-right {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 6px;
 	}
 	.badge {
-		min-width: 20px;
-		height: 20px;
-		line-height: 20px;
-		text-align: center;
 		background: #f56c6c;
 		color: #fff;
-		border-radius: 10px;
 		font-size: 11px;
-		padding: 0 6px;
+		padding: 1px 6px;
+		border-radius: 8px;
+		min-width: 16px;
+		text-align: center;
 	}
-
 	.login-tip {
-		margin-top: 40px;
+		padding: 30px 16px;
 		text-align: center;
 	}
 	.login-btn {
-		width: 200px;
-		height: 44px;
-		line-height: 44px;
 		background: #409eff;
 		color: #fff;
-		border-radius: 22px;
-		font-size: 16px;
-		border: none;
+		border-radius: 8px;
+		height: 44px;
+		line-height: 44px;
+		font-size: 15px;
 	}
 </style>

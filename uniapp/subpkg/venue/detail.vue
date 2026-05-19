@@ -5,7 +5,7 @@
 			v-if="venue"
 		>
 			<image
-				:src="venue.coverImage || '/static/placeholder.jpg'"
+				:src="venue.coverImage || getVenueImage(venue.id)"
 				class="cover-image"
 				mode="aspectFill"
 			/>
@@ -63,25 +63,25 @@
 		</view>
 
 		<view class="section">
-			<view class="section-title">近期球局</view>
+			<view class="section-title">近期场局</view>
 			<view class="match-list">
 				<view
-					v-for="match in matches"
-					:key="match.id"
+					v-for="m in matches"
+					:key="m.id"
 					class="match-item"
-					@tap="goMatch(match.id)"
+					@tap="goMatch(m.id)"
 				>
 					<view class="match-body">
-						<text class="match-title">{{ match.title }}</text>
-						<text class="match-meta">{{ match.matchDate }} {{ match.startTime }}</text>
+						<text class="match-title">{{ m.title }}</text>
+						<text class="match-meta">{{ m.matchDate }} {{ m.startTime }}</text>
 					</view>
 					<view class="match-right">
-						<text class="match-count">{{ match.currentPlayers }}/{{ match.maxPlayers }}</text>
+						<text class="match-count">{{ m.currentPlayers }}/{{ m.maxPlayers }}</text>
 						<text
 							class="match-status"
-							:class="match.status === 1 ? 'open' : ''"
+							:class="m.status === 1 ? 'open' : ''"
 						>
-							{{ match.status === 1 ? "报名中" : "已满员" }}
+							{{ m.status === 1 ? "报名中" : "已满员" }}
 						</text>
 					</view>
 				</view>
@@ -89,28 +89,46 @@
 			<view
 				class="empty"
 				v-if="!matches.length"
-				>暂无球局</view
+				>暂无场局</view
 			>
 		</view>
 	</view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 	import { ref } from "vue";
 	import { onLoad } from "@dcloudio/uni-app";
 	import { venueApi, matchApi } from "@/api";
+	import type { Venue, Match } from "@/types";
 
-	const venue = ref(null);
-	const facilities = ref([]);
-	const matches = ref([]);
+	const VENUE_PICS = [
+		"https://picsum.photos/seed/ven1/400/300",
+		"https://picsum.photos/seed/ven2/400/300",
+		"https://picsum.photos/seed/ven3/400/300",
+		"https://picsum.photos/seed/ven4/400/300",
+		"https://picsum.photos/seed/ven5/400/300",
+		"https://picsum.photos/seed/ven6/400/300",
+		"https://picsum.photos/seed/ven7/400/300",
+		"https://picsum.photos/seed/ven8/400/300",
+		"https://picsum.photos/seed/ven9/400/300",
+		"https://picsum.photos/seed/ven10/400/300",
+	];
 
-	function goMatch(id) {
-		uni.navigateTo({ url: `/pages/match/detail?id=${id}` });
+	function getVenueImage(seed: number): string {
+		return VENUE_PICS[seed % VENUE_PICS.length];
 	}
 
-	async function fetchDetail() {
+	const venue = ref<Venue | null>(null);
+	const facilities = ref<string[]>([]);
+	const matches = ref<Match[]>([]);
+
+	function goMatch(id: number): void {
+		uni.navigateTo({ url: `/subpkg/match/detail?id=${id}` });
+	}
+
+	async function fetchDetail(): Promise<void> {
 		const pages = getCurrentPages();
-		const options = pages[pages.length - 1].options;
+		const options = pages[pages.length - 1].options as Record<string, string>;
 		const id = Number(options.id);
 		if (!id) return;
 		try {
@@ -118,7 +136,7 @@
 			venue.value = venueRes.data;
 			facilities.value = venueRes.data.facilities || [];
 			matches.value = matchRes.data.list;
-		} catch (e) {
+		} catch (_) {
 			/* ignore */
 		}
 	}
@@ -130,14 +148,18 @@
 
 <style scoped>
 	.page {
-		padding-bottom: 20px;
+		background: #f5f5f5;
+		min-height: 100vh;
+	}
+	.venue-header {
+		position: relative;
 	}
 	.cover-image {
 		width: 100%;
 		height: 200px;
 	}
 	.venue-basic {
-		padding: 16px;
+		padding: 12px 16px;
 		background: #fff;
 		display: flex;
 		justify-content: space-between;
@@ -146,108 +168,113 @@
 	.venue-name {
 		font-size: 18px;
 		font-weight: 700;
+		color: #333;
 	}
 	.venue-rating {
 		font-size: 14px;
-		color: #e6a23c;
+		color: #f0ad4e;
 	}
-
 	.info-card {
-		margin: 12px 16px;
 		background: #fff;
-		border-radius: 10px;
-		padding: 16px;
+		margin: 10px 0;
+		padding: 0 16px;
 	}
 	.info-row {
 		display: flex;
-		justify-content: space-between;
-		padding: 8px 0;
+		padding: 12px 0;
 		border-bottom: 1px solid #f5f5f5;
-	}
-	.info-row:last-child {
-		border-bottom: none;
+		align-items: center;
 	}
 	.info-label {
+		width: 60px;
 		font-size: 13px;
 		color: #999;
+		flex-shrink: 0;
 	}
 	.info-value {
-		font-size: 14px;
 		flex: 1;
-		text-align: right;
+		font-size: 14px;
+		color: #333;
 	}
 	.info-value.link {
 		color: #409eff;
 	}
-
 	.section {
-		margin: 12px 16px;
 		background: #fff;
-		border-radius: 10px;
-		padding: 16px;
+		margin: 10px 0;
+		padding: 14px 16px;
 	}
 	.section-title {
 		font-size: 15px;
-		font-weight: 600;
-		margin-bottom: 12px;
+		font-weight: 700;
+		margin-bottom: 10px;
+		color: #333;
 	}
 	.desc-text {
 		font-size: 14px;
 		color: #666;
 		line-height: 1.6;
 	}
-
 	.facility-list {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
+		gap: 6px;
 	}
 	.facility-tag {
-		padding: 4px 12px;
-		background: #f0f7ff;
-		color: #409eff;
+		padding: 4px 10px;
+		background: #f5f5f5;
 		border-radius: 12px;
 		font-size: 12px;
+		color: #666;
 	}
-
 	.match-list {
 		display: flex;
 		flex-direction: column;
 	}
 	.match-item {
 		display: flex;
-		justify-content: space-between;
-		align-items: center;
 		padding: 10px 0;
 		border-bottom: 1px solid #f5f5f5;
+		align-items: center;
 	}
-	.match-item:last-child {
-		border-bottom: none;
+	.match-body {
+		flex: 1;
 	}
 	.match-title {
 		font-size: 14px;
-		font-weight: 500;
+		font-weight: 600;
+		color: #333;
 		display: block;
 	}
 	.match-meta {
 		font-size: 12px;
-		color: #999;
+		color: #888;
+		display: block;
+	}
+	.match-right {
+		text-align: right;
 	}
 	.match-count {
-		font-size: 16px;
-		font-weight: 700;
-		color: #409eff;
+		font-size: 13px;
+		color: #666;
+		display: block;
 	}
 	.match-status {
-		font-size: 12px;
+		font-size: 11px;
+		padding: 1px 6px;
+		border-radius: 4px;
+		background: #f0f0f0;
 		color: #999;
+		display: block;
+		margin-top: 2px;
 	}
 	.match-status.open {
-		color: #67c23a;
+		background: #ecf5ff;
+		color: #409eff;
 	}
 	.empty {
 		text-align: center;
-		padding: 20px;
+		padding: 20px 0;
 		color: #999;
 		font-size: 13px;
 	}
