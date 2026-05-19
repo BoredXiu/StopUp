@@ -7,17 +7,18 @@
 					@tap="chooseLocation"
 				>
 					<text class="location-icon">📍</text>
-					<text class="location-text">{{ currentCity || "点击定位" }}</text>
+					<text class="location-text">{{ displayRegion || "点击定位" }}</text>
 				</view>
 				<picker
 					class="city-picker"
-					mode="selector"
-					:range="cityOptions"
-					:value="cityIndex"
-					@change="onCityPick"
+					mode="multiSelector"
+					:range="regionPickRange"
+					:value="regionPickValue"
+					@change="onRegionPick"
+					@columnchange="onRegionColumnChange"
 				>
 					<view class="city-pick-trigger">
-						<text>{{ currentCity || "选择城市" }}</text>
+						<text>{{ displayRegion || "选择区域" }}</text>
 						<text class="pick-arrow">▾</text>
 					</view>
 				</picker>
@@ -76,6 +77,7 @@
 	import { ref, computed, onMounted } from "vue";
 	import { venueApi } from "@/api";
 	import type { Venue } from "@/types";
+	import { REGION_DATA } from "@/data/regions";
 
 	const VENUE_PICS = [
 		"https://picsum.photos/seed/gym1/400/300",
@@ -100,42 +102,61 @@
 	const page = ref(1);
 	const hasMore = ref(true);
 	const currentCity = ref("");
+	const currentDistrict = ref("");
+	const currentProvince = ref("");
+	const regionPickValue = ref([0, 0, 0]);
+	const displayRegion = ref("");
 
-	const cityOptions = [
-		"全国",
-		"北京",
-		"上海",
-		"广州",
-		"深圳",
-		"杭州",
-		"成都",
-		"武汉",
-		"南京",
-		"重庆",
-		"西安",
-		"天津",
-		"苏州",
-		"长沙",
-		"郑州",
-		"东莞",
-		"青岛",
-		"厦门",
-		"合肥",
-		"佛山",
-		"宁波",
-	];
-
-	const cityIndex = computed(() => {
-		const idx = cityOptions.indexOf(currentCity.value);
-		return idx >= 0 ? idx : 0;
+	const regionPickRange = computed(() => {
+		const provinces = REGION_DATA.map((r) => r.name);
+		const cities = REGION_DATA[regionPickValue.value[0]]?.cities.map((c) => c.name) || ["不限"];
+		const districts = REGION_DATA[regionPickValue.value[0]]?.cities[regionPickValue.value[1]]?.districts || ["不限"];
+		return [provinces, cities, districts];
 	});
 
-	function onCityPick(e: any): void {
-		const val = cityOptions[e.detail.value];
-		if (val === currentCity.value) return;
-		currentCity.value = val === "全国" ? "" : val;
+	function buildDisplayRegion(): string {
+		const p = REGION_DATA[regionPickValue.value[0]];
+		if (!p || p.name === "全国") return "";
+		const c = p.cities[regionPickValue.value[1]];
+		if (!c || c.name === "不限") return p.name;
+		const d = c.districts[regionPickValue.value[2]];
+		if (!d || d === "不限") return c.name === p.name ? p.name : c.name;
+		return c.name === p.name ? d : c.name + d;
+	}
+
+	function onRegionPick(e: any): void {
+		const [pIdx, cIdx, dIdx] = e.detail.value;
+		regionPickValue.value = [pIdx, cIdx, dIdx];
+		const p = REGION_DATA[pIdx];
+		if (!p || p.name === "全国") {
+			currentProvince.value = "";
+			currentCity.value = "";
+			currentDistrict.value = "";
+		} else {
+			currentProvince.value = p.name;
+			const c = p.cities[cIdx];
+			currentCity.value = c && c.name !== "不限" ? c.name : "";
+			currentDistrict.value = "";
+			if (c) {
+				const d = c.districts[dIdx];
+				currentDistrict.value = d && d !== "不限" ? d : "";
+			}
+		}
+		displayRegion.value = buildDisplayRegion();
+		uni.setStorageSync("venueProvince", currentProvince.value);
 		uni.setStorageSync("venueCity", currentCity.value);
+		uni.setStorageSync("venueDistrict", currentDistrict.value);
 		fetchVenues();
+	}
+
+	function onRegionColumnChange(e: any): void {
+		const col = e.detail.column;
+		const val = e.detail.value;
+		if (col === 0) {
+			regionPickValue.value = [val, 0, 0];
+		} else if (col === 1) {
+			regionPickValue.value = [regionPickValue.value[0], val, 0];
+		}
 	}
 
 	function goDetail(id: number): void {
@@ -146,13 +167,47 @@
 		uni.chooseLocation({
 			success: (res: any) => {
 				const addr: string = res.address || res.name || "";
-				const match = addr.match(/(北京|上海|广州|深圳|杭州|成都|武汉|南京|重庆|西安|天津|苏州|长沙|郑州|东莞|青岛|厦门|合肥|佛山|宁波|全国)/);
-				if (match) {
-					currentCity.value = match[0];
-				} else {
-					currentCity.value = addr.slice(0, 10) || "已选择";
+				let found = false;
+				for (let pi = 0; pi < REGION_DATA.length; pi++) {
+					const p = REGION_DATA[pi];
+					if (p.name === "全国") continue;
+					if (!addr.includes(p.name.replace(/[省市]$/, ""))) continue;
+					currentProvince.value = p.name;
+					let ci = 0;
+					for (let cj = 0; cj < p.cities.length; cj++) {
+						if (addr.includes(p.cities[cj].name)) {
+							ci = cj;
+							break;
+						}
+					}
+					const c = p.cities[ci];
+					currentCity.value = c.name !== "不限" ? c.name : "";
+					currentDistrict.value = "";
+					let di = 0;
+					if (c) {
+						for (let dk = 0; dk < c.districts.length; dk++) {
+							if (c.districts[dk] !== "不限" && addr.includes(c.districts[dk])) {
+								currentDistrict.value = c.districts[dk];
+								di = dk;
+								break;
+							}
+						}
+					}
+					regionPickValue.value = [pi, ci, di];
+					displayRegion.value = buildDisplayRegion();
+					found = true;
+					break;
 				}
+				if (!found) {
+					currentProvince.value = "";
+					currentCity.value = addr.slice(0, 10) || "已选择";
+					currentDistrict.value = "";
+					regionPickValue.value = [0, 0, 0];
+					displayRegion.value = currentCity.value;
+				}
+				uni.setStorageSync("venueProvince", currentProvince.value);
 				uni.setStorageSync("venueCity", currentCity.value);
+				uni.setStorageSync("venueDistrict", currentDistrict.value);
 				fetchVenues();
 			},
 			fail: () => {

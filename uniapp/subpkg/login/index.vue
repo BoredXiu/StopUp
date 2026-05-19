@@ -44,7 +44,7 @@
 						class="form-input captcha-input"
 						v-model="phoneForm.captchaCode"
 						@input="onPhoneCaptchaInput"
-						placeholder="图形验证码（英文数字）"
+						placeholder="图形验证码（仅英文字母）"
 						maxlength="4"
 					/>
 					<image
@@ -112,7 +112,7 @@
 						class="form-input captcha-input"
 						v-model="registerForm.captchaCode"
 						@input="onRegisterCaptchaInput"
-						placeholder="图形验证码（英文数字）"
+						placeholder="图形验证码（仅英文字母）"
 						maxlength="4"
 					/>
 					<image
@@ -137,7 +137,10 @@
 				</button>
 			</view>
 
-			<view class="wechat-login">
+			<view
+				class="wechat-login"
+				v-if="activeTab === 'phone'"
+			>
 				<button
 					class="wechat-btn"
 					open-type="getPhoneNumber"
@@ -168,7 +171,7 @@
 	const registerForm = reactive({ phone: "", smsCode: "", nickname: "", password: "", captchaCode: "" });
 
 	function filterCaptcha(val: string): string {
-		return (val || "").replace(/[^a-zA-Z0-9]/g, "");
+		return (val || "").replace(/[^a-zA-Z]/g, "");
 	}
 
 	function onPhoneCaptchaInput(): void {
@@ -226,6 +229,10 @@
 			uni.showToast({ title: "请输入手机号", icon: "none" });
 			return;
 		}
+		if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) {
+			uni.showToast({ title: "请输入正确的手机号", icon: "none" });
+			return;
+		}
 		if (!phoneForm.password) {
 			uni.showToast({ title: "请输入密码", icon: "none" });
 			return;
@@ -243,9 +250,24 @@
 				captchaCode: phoneForm.captchaCode,
 			});
 			const data = res.data as LoginResult;
+			if (!data || !data.token) {
+				uni.showToast({ title: "登录失败：服务器返回数据异常", icon: "none" });
+				refreshCaptcha();
+				return;
+			}
 			afterLogin(data);
-		} catch (_) {
-			mockLogin(phoneForm.phone, phoneForm.password);
+		} catch (err: any) {
+			const msg = err?.message || "";
+			if (msg.includes("密码") || msg.includes("password")) {
+				uni.showToast({ title: "密码错误，请重试", icon: "none" });
+			} else if (msg.includes("验证码") || msg.includes("captcha")) {
+				uni.showToast({ title: "验证码错误，请重试", icon: "none" });
+				refreshCaptcha();
+			} else {
+				uni.showToast({ title: msg || "登录失败，请重试", icon: "none" });
+			}
+			phoneForm.captchaCode = "";
+			refreshCaptcha();
 		} finally {
 			loading.value = false;
 		}
@@ -256,6 +278,10 @@
 			uni.showToast({ title: "请输入手机号", icon: "none" });
 			return;
 		}
+		if (!/^1[3-9]\d{9}$/.test(registerForm.phone)) {
+			uni.showToast({ title: "请输入正确的手机号", icon: "none" });
+			return;
+		}
 		if (!registerForm.smsCode) {
 			uni.showToast({ title: "请输入短信验证码", icon: "none" });
 			return;
@@ -264,52 +290,44 @@
 			uni.showToast({ title: "请设置密码", icon: "none" });
 			return;
 		}
+		if (registerForm.password.length < 6) {
+			uni.showToast({ title: "密码长度至少6位", icon: "none" });
+			return;
+		}
 		loading.value = true;
 		try {
 			const res = await authApi.register({
 				phone: registerForm.phone,
 				password: registerForm.password,
-				nickname: registerForm.nickname,
+				nickname: registerForm.nickname || undefined,
 				smsCode: registerForm.smsCode,
 			});
 			const data = res.data as LoginResult;
+			if (!data || !data.token) {
+				uni.showToast({ title: "注册失败：服务器返回数据异常", icon: "none" });
+				return;
+			}
 			afterLogin(data);
-		} catch (_) {
-			if (registerForm.smsCode === "123456") {
-				mockLogin(registerForm.phone, registerForm.password, registerForm.nickname);
+		} catch (err: any) {
+			const msg = err?.message || "";
+			if (msg.includes("验证码") || msg.includes("sms") || msg.includes("code")) {
+				uni.showToast({ title: "验证码错误，请重试", icon: "none" });
 			} else {
-				uni.showToast({ title: "验证码错误，请输入123456", icon: "none", duration: 2000 });
+				uni.showToast({ title: msg || "注册失败，请重试", icon: "none" });
 			}
 		} finally {
 			loading.value = false;
 		}
 	}
 
-	function mockLogin(phone: string, password: string, nickname?: string): void {
-		const mockData: LoginResult = {
-			token: "mock_token_" + Date.now(),
-			refreshToken: "mock_refresh_" + Date.now(),
-			user: {
-				id: 1,
-				phone: phone,
-				nickname: nickname || "用户" + phone.slice(-4),
-				avatar: "",
-				bio: "",
-				gender: 0,
-				city: "",
-				creditScore: 100,
-				role: 0,
-				status: 1,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-			},
-		};
-		afterLogin(mockData);
-	}
-
 	function afterLogin(data: LoginResult): void {
+		if (!data || !data.token) {
+			uni.showToast({ title: "登录异常，请重试", icon: "none" });
+			return;
+		}
 		userStore.setToken(data.token);
 		userStore.user = data.user;
+		uni.setStorageSync("user", JSON.stringify(data.user));
 		uni.showToast({ title: "登录成功", icon: "success" });
 		setTimeout(() => {
 			const pages = getCurrentPages();
@@ -328,9 +346,14 @@
 		try {
 			const res = await authApi.loginByWechat(code);
 			const data = res.data as LoginResult;
+			if (!data || !data.token) {
+				uni.showToast({ title: "微信登录失败：数据异常", icon: "none" });
+				return;
+			}
 			afterLogin(data);
-		} catch (_) {
-			mockLogin("13800138000", "mock123");
+		} catch (err: any) {
+			const msg = err?.message || "";
+			uni.showToast({ title: msg || "微信登录失败", icon: "none" });
 		} finally {
 			loading.value = false;
 		}
@@ -454,13 +477,15 @@
 		flex-shrink: 0;
 	}
 	.submit-btn {
+		width: 100%;
 		background: #409eff;
 		color: #fff;
 		height: 44px;
 		line-height: 44px;
 		border-radius: 8px;
-		font-size: 15px;
-		font-weight: 600;
+		font-size: 14px;
+		font-weight: 400;
+		padding: 0;
 	}
 	.wechat-login {
 		margin-top: 20px;
@@ -469,11 +494,14 @@
 		border-top: 1px solid #f0f0f0;
 	}
 	.wechat-btn {
+		width: 100%;
 		background: #07c160;
 		color: #fff;
 		height: 44px;
 		line-height: 44px;
 		border-radius: 8px;
 		font-size: 14px;
+		font-weight: 400;
+		padding: 0;
 	}
 </style>

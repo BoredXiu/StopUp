@@ -3,22 +3,40 @@
 		<view class="form-section">
 			<view class="form-item">
 				<text class="form-label">头像</text>
-				<view class="avatar-upload" @tap="chooseAvatar">
-					<image :src="form.avatar || '/static/default-avatar.png'" class="avatar-preview" mode="aspectFill" />
+				<view
+					class="avatar-upload"
+					@tap="chooseAvatar"
+				>
+					<image
+						:src="form.avatar || '/static/default-avatar.png'"
+						class="avatar-preview"
+						mode="aspectFill"
+					/>
 					<text class="avatar-tip">点击更换</text>
 				</view>
 			</view>
 
 			<view class="form-item">
 				<text class="form-label">昵称</text>
-				<input class="form-input" v-model="form.nickname" placeholder="请输入昵称" maxlength="20" />
+				<input
+					class="form-input"
+					v-model="form.nickname"
+					placeholder="请输入昵称"
+					maxlength="20"
+				/>
 			</view>
 
 			<view class="form-item">
 				<text class="form-label">性别</text>
-				<picker class="form-picker" mode="selector" :range="genderOptions" :value="genderIndex" @change="onGenderPick">
+				<picker
+					class="form-picker"
+					mode="selector"
+					:range="genderOptions"
+					:value="genderIndex"
+					@change="onGenderPick"
+				>
 					<view class="picker-display">
-						<text :class="{ placeholder: !form.gender }">{{ genderLabel || '请选择' }}</text>
+						<text :class="{ placeholder: !form.gender }">{{ genderLabel || "请选择" }}</text>
 						<text class="picker-arrow">▾</text>
 					</view>
 				</picker>
@@ -26,9 +44,14 @@
 
 			<view class="form-item">
 				<text class="form-label">生日</text>
-				<picker class="form-picker" mode="date" :value="form.birthday" @change="onBirthdayPick">
+				<picker
+					class="form-picker"
+					mode="date"
+					:value="form.birthday"
+					@change="onBirthdayPick"
+				>
 					<view class="picker-display">
-						<text :class="{ placeholder: !form.birthday }">{{ form.birthday || '请选择' }}</text>
+						<text :class="{ placeholder: !form.birthday }">{{ form.birthday || "请选择" }}</text>
 						<text class="picker-arrow">▾</text>
 					</view>
 				</picker>
@@ -36,9 +59,16 @@
 
 			<view class="form-item">
 				<text class="form-label">城市</text>
-				<picker class="form-picker" mode="selector" :range="cityOptions" :value="cityIndex" @change="onCityPick">
+				<picker
+					class="form-picker"
+					mode="multiSelector"
+					:range="regionPickRange"
+					:value="regionPickValue"
+					@change="onRegionPick"
+					@columnchange="onRegionColumnChange"
+				>
 					<view class="picker-display">
-						<text :class="{ placeholder: !form.city }">{{ form.city || '请选择' }}</text>
+						<text :class="{ placeholder: !regionDisplay }">{{ regionDisplay || "请选择" }}</text>
 						<text class="picker-arrow">▾</text>
 					</view>
 				</picker>
@@ -46,12 +76,23 @@
 
 			<view class="form-item form-item-textarea">
 				<text class="form-label">个人简介</text>
-				<textarea class="form-textarea" v-model="form.bio" placeholder="介绍一下自己吧..." maxlength="200" />
+				<textarea
+					class="form-textarea"
+					v-model="form.bio"
+					placeholder="介绍一下自己吧..."
+					maxlength="200"
+				/>
 			</view>
 		</view>
 
 		<view class="btn-area">
-			<button class="save-btn" @tap="handleSave" :loading="saving">保存</button>
+			<button
+				class="save-btn"
+				@tap="handleSave"
+				:loading="saving"
+			>
+				保存
+			</button>
 		</view>
 	</view>
 </template>
@@ -60,12 +101,12 @@
 	import { ref, reactive, computed, onMounted } from "vue";
 	import { userApi } from "@/api";
 	import { useUserStore } from "@/store/user";
+	import { REGION_DATA } from "@/data/regions";
 
 	const userStore = useUserStore();
 	const saving = ref(false);
 
 	const genderOptions = ["男", "女"];
-	const cityOptions = ["北京", "上海", "广州", "深圳", "杭州", "成都", "武汉", "南京", "重庆", "西安", "天津", "苏州", "长沙", "郑州"];
 
 	const form = reactive({
 		avatar: "",
@@ -85,11 +126,6 @@
 		return form.gender === 2 ? 1 : 0;
 	});
 
-	const cityIndex = computed(() => {
-		const idx = cityOptions.indexOf(form.city);
-		return idx >= 0 ? idx : 0;
-	});
-
 	function onGenderPick(e: any): void {
 		form.gender = e.detail.value === 0 ? 1 : 2;
 	}
@@ -98,8 +134,94 @@
 		form.birthday = e.detail.value;
 	}
 
-	function onCityPick(e: any): void {
-		form.city = cityOptions[e.detail.value];
+	const regionPickValue = ref([0, 0, 0]);
+	const regionDisplay = ref("");
+
+	const regionPickRange = computed(() => {
+		const provinces = REGION_DATA.map((r) => r.name);
+		const cities = REGION_DATA[regionPickValue.value[0]]?.cities.map((c) => c.name) || ["不限"];
+		const districts = REGION_DATA[regionPickValue.value[0]]?.cities[regionPickValue.value[1]]?.districts || ["不限"];
+		return [provinces, cities, districts];
+	});
+
+	function buildRegionDisplay(): string {
+		const p = REGION_DATA[regionPickValue.value[0]];
+		if (!p || p.name === "全国") return "";
+		const c = p.cities[regionPickValue.value[1]];
+		if (!c || c.name === "不限") return p.name;
+		const d = c.districts[regionPickValue.value[2]];
+		if (!d || d === "不限") return c.name === p.name ? p.name : c.name + d;
+		return c.name === p.name ? d : c.name + d;
+	}
+
+	function updateFormCity(): void {
+		const p = REGION_DATA[regionPickValue.value[0]];
+		if (!p || p.name === "全国") {
+			form.city = "";
+			return;
+		}
+		const c = p.cities[regionPickValue.value[1]];
+		const d = c?.districts[regionPickValue.value[2]];
+		const parts: string[] = [];
+		if (p.name !== "全国") parts.push(p.name);
+		if (c && c.name !== "不限") parts.push(c.name);
+		if (d && d !== "不限") parts.push(d);
+		form.city = parts.join("-");
+	}
+
+	function onRegionPick(e: any): void {
+		const [pIdx, cIdx, dIdx] = e.detail.value;
+		regionPickValue.value = [pIdx, cIdx, dIdx];
+		regionDisplay.value = buildRegionDisplay();
+		updateFormCity();
+	}
+
+	function onRegionColumnChange(e: any): void {
+		const col = e.detail.column;
+		const val = e.detail.value;
+		if (col === 0) {
+			regionPickValue.value = [val, 0, 0];
+		} else if (col === 1) {
+			regionPickValue.value = [regionPickValue.value[0], val, 0];
+		}
+	}
+
+	function parseCityToRegion(cityStr: string): void {
+		if (!cityStr) {
+			regionPickValue.value = [0, 0, 0];
+			regionDisplay.value = "";
+			return;
+		}
+		const parts = cityStr.split("-");
+		for (let pi = 0; pi < REGION_DATA.length; pi++) {
+			const p = REGION_DATA[pi];
+			if (p.name === "全国") continue;
+			if (parts[0] && parts[0] !== p.name && !p.name.includes(parts[0])) continue;
+			let ci = 0;
+			if (parts[1]) {
+				for (let cj = 0; cj < p.cities.length; cj++) {
+					if (p.cities[cj].name.includes(parts[1])) {
+						ci = cj;
+						break;
+					}
+				}
+			}
+			let di = 0;
+			const c = p.cities[ci];
+			if (c && parts[2]) {
+				for (let dk = 0; dk < c.districts.length; dk++) {
+					if (c.districts[dk].includes(parts[2])) {
+						di = dk;
+						break;
+					}
+				}
+			}
+			regionPickValue.value = [pi, ci, di];
+			regionDisplay.value = buildRegionDisplay();
+			return;
+		}
+		regionPickValue.value = [0, 0, 0];
+		regionDisplay.value = "";
 	}
 
 	function chooseAvatar(): void {
@@ -147,6 +269,7 @@
 			form.birthday = userStore.user.birthday || "";
 			form.city = userStore.user.city || "";
 			form.bio = userStore.user.bio || "";
+			parseCityToRegion(form.city);
 		}
 	});
 </script>

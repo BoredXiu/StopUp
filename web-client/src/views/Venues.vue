@@ -14,28 +14,11 @@
 				@input="handleSearch"
 				style="width: 300px"
 			/>
-			<el-button
-				class="locate-btn"
-				@click="detectCity"
-				:loading="cityDetecting"
-			>
-				<el-icon><Location /></el-icon>
-				{{ currentCity || "定位" }}
-			</el-button>
-			<el-select
-				v-model="currentCity"
-				placeholder="选择城市"
-				clearable
-				@change="fetchVenues"
-				style="width: 110px"
-			>
-				<el-option
-					v-for="c in cityOptions"
-					:key="c"
-					:label="c"
-					:value="c === '全国' ? '' : c"
-				/>
-			</el-select>
+			<CascadingCitySelect
+				v-model="regionValue"
+				storage-key="venue_city"
+				@update:model-value="fetchVenues"
+			/>
 		</div>
 
 		<div
@@ -91,10 +74,10 @@
 
 <script setup lang="ts">
 	import { ref, onMounted } from "vue";
-	import { ElMessage } from "element-plus";
-	import { Search, Location } from "@element-plus/icons-vue";
+	import { Search } from "@element-plus/icons-vue";
 	import { venueApi } from "@/api";
 	import type { Venue } from "@/types";
+	import CascadingCitySelect from "@/components/CascadingCitySelect.vue";
 
 	const VENUE_PICS = [
 		"https://picsum.photos/seed/court1/400/300",
@@ -113,40 +96,23 @@
 		return VENUE_PICS[seed % VENUE_PICS.length];
 	}
 
-	const cityOptions = [
-		"全国",
-		"北京",
-		"上海",
-		"广州",
-		"深圳",
-		"杭州",
-		"成都",
-		"武汉",
-		"南京",
-		"重庆",
-		"西安",
-		"天津",
-		"苏州",
-		"长沙",
-		"郑州",
-		"东莞",
-		"青岛",
-		"厦门",
-		"合肥",
-		"佛山",
-		"宁波",
-	];
-
 	const venues = ref<Venue[]>([]);
 	const loading = ref(false);
 	const keyword = ref("");
-	const currentCity = ref("");
-	const cityDetecting = ref(false);
+	const regionValue = ref("");
 	const page = ref(1);
 	const pageSize = 12;
 	const total = ref(0);
 
 	let searchTimer: ReturnType<typeof setTimeout>;
+
+	function extractCity(region: string): string {
+		if (!region) return "";
+		const parts = region.split("-");
+		if (parts.length >= 2 && parts[1] !== "不限") return parts[1];
+		if (parts[0] && parts[0] !== "全国") return parts[0];
+		return "";
+	}
 
 	function handleSearch() {
 		clearTimeout(searchTimer);
@@ -163,40 +129,12 @@
 				page: page.value,
 				pageSize,
 				keyword: keyword.value || undefined,
-				city: currentCity.value || undefined,
+				city: extractCity(regionValue.value) || undefined,
 			});
 			venues.value = res.data.list;
 			total.value = res.data.pagination.total;
 		} finally {
 			loading.value = false;
-		}
-	}
-
-	async function detectCity() {
-		if (!navigator.geolocation) {
-			ElMessage.warning("浏览器不支持定位功能");
-			return;
-		}
-		cityDetecting.value = true;
-		try {
-			const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-				navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-			});
-			const { latitude, longitude } = position.coords;
-			const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&accept-language=zh`);
-			const data = await res.json();
-			const addr = data.address || {};
-			const province = addr.province || "";
-			const cityPart = addr.city || addr.town || "";
-			const district = addr.district || addr.county || "";
-			const displayCity = district && cityPart ? `${cityPart}${district}` : cityPart || district || province || "";
-			const match = displayCity.match(/(北京|上海|广州|深圳|杭州|成都|武汉|南京|重庆|西安|天津|苏州|长沙|郑州|东莞|青岛|厦门|合肥|佛山|宁波)(.+)?/);
-			currentCity.value = match ? match[0] : displayCity || "";
-			if (currentCity.value) fetchVenues();
-		} catch {
-			ElMessage.warning("定位失败，请手动选择城市");
-		} finally {
-			cityDetecting.value = false;
 		}
 	}
 

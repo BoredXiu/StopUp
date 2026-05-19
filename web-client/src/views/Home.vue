@@ -5,30 +5,11 @@
 				<h1 class="hero-title">找到你的运动搭子</h1>
 				<p class="hero-subtitle">随时随地，拼一场球局</p>
 				<div class="hero-bar">
-					<el-button
-						link
-						class="city-locate-btn"
-						@click="detectCity"
-						:loading="cityDetecting"
-					>
-						<el-icon><Location /></el-icon>
-						{{ currentCity || "点击定位" }}
-					</el-button>
-					<el-select
-						v-model="currentCity"
-						placeholder="选择城市"
-						clearable
-						@change="onCityChange"
-						size="small"
-						class="city-select"
-					>
-						<el-option
-							v-for="c in cityOptions"
-							:key="c"
-							:label="c"
-							:value="c === '全国' ? '' : c"
-						/>
-					</el-select>
+					<CascadingCitySelect
+						v-model="regionValue"
+						storage-key="home_city"
+						@update:model-value="onRegionChange"
+					/>
 					<el-input
 						v-model="searchKeyword"
 						placeholder="搜索球局、运动类型..."
@@ -162,11 +143,11 @@
 <script setup lang="ts">
 	import { ref, onMounted } from "vue";
 	import { useRouter } from "vue-router";
-	import { ElMessage } from "element-plus";
-	import { Search, Location } from "@element-plus/icons-vue";
+	import { Search } from "@element-plus/icons-vue";
 	import { matchApi, venueApi, sportApi } from "@/api";
 	import type { Match, Venue, Sport } from "@/types";
 	import MatchCard from "@/components/MatchCard.vue";
+	import CascadingCitySelect from "@/components/CascadingCitySelect.vue";
 
 	const VENUE_PICS = [
 		"https://picsum.photos/seed/court1/400/300",
@@ -188,8 +169,7 @@
 	const router = useRouter();
 	const searchKeyword = ref("");
 	const activeSport = ref(0);
-	const currentCity = ref("");
-	const cityDetecting = ref(false);
+	const regionValue = ref("");
 	const sports = ref<Sport[]>([]);
 	const matches = ref<Match[]>([]);
 	const featuredMatches = ref<Match[]>([]);
@@ -198,33 +178,18 @@
 	const page = ref(1);
 	const total = ref(0);
 
-	const cityOptions = [
-		"全国",
-		"北京",
-		"上海",
-		"广州",
-		"深圳",
-		"杭州",
-		"成都",
-		"武汉",
-		"南京",
-		"重庆",
-		"西安",
-		"天津",
-		"苏州",
-		"长沙",
-		"郑州",
-		"东莞",
-		"青岛",
-		"厦门",
-		"合肥",
-		"佛山",
-		"宁波",
-	];
+	function extractCity(region: string): string {
+		if (!region) return "";
+		const parts = region.split("-");
+		if (parts.length >= 2 && parts[1] !== "不限") return parts[1];
+		if (parts[0] && parts[0] !== "全国") return parts[0];
+		return "";
+	}
 
 	function goSearch() {
-		const query: Record<string, string | undefined> = { keyword: searchKeyword.value || undefined, city: currentCity.value || undefined };
+		const query: Record<string, string | undefined> = { keyword: searchKeyword.value || undefined, city: extractCity(regionValue.value) || undefined };
 		if (activeSport.value > 0) query.sportId = String(activeSport.value);
+		if (regionValue.value) query.region = regionValue.value;
 		router.push({ name: "Search", query });
 	}
 
@@ -235,39 +200,10 @@
 		fetchMatches();
 	}
 
-	function onCityChange() {
+	function onRegionChange() {
 		page.value = 1;
 		matches.value = [];
 		fetchMatches();
-	}
-
-	async function detectCity() {
-		if (!navigator.geolocation) {
-			ElMessage.warning("浏览器不支持定位功能");
-			return;
-		}
-		cityDetecting.value = true;
-		try {
-			const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-				navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-			});
-			const { latitude, longitude } = position.coords;
-			const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&accept-language=zh`);
-			const data = await res.json();
-			const addr = data.address || {};
-			const province = addr.province || "";
-			const cityPart = addr.city || addr.town || "";
-			const district = addr.district || addr.county || "";
-			const displayCity = district && cityPart ? `${cityPart}${district}` : cityPart || district || province || "";
-			const match = displayCity.match(/(北京|上海|广州|深圳|杭州|成都|武汉|南京|重庆|西安|天津|苏州|长沙|郑州|东莞|青岛|厦门|合肥|佛山|宁波)(.+)?/);
-			currentCity.value = match ? match[0] : displayCity || "北京";
-			onCityChange();
-		} catch {
-			currentCity.value = "北京";
-			onCityChange();
-		} finally {
-			cityDetecting.value = false;
-		}
 	}
 
 	async function fetchMatches() {
@@ -275,7 +211,8 @@
 		try {
 			const params: any = { page: page.value, pageSize: 12, status: 1 };
 			if (activeSport.value > 0) params.sportId = activeSport.value;
-			if (currentCity.value) params.city = currentCity.value;
+			const city = extractCity(regionValue.value);
+			if (city) params.city = city;
 			const res = await matchApi.list(params);
 			if (page.value === 1) {
 				matches.value = res.data.list;
@@ -330,28 +267,6 @@
 		gap: 10px;
 		margin-bottom: 20px;
 		flex-wrap: nowrap;
-	}
-	.hero-bar :deep(.el-select) {
-		height: 40px;
-	}
-	.hero-bar :deep(.el-select .el-input__wrapper) {
-		height: 40px;
-	}
-	.city-locate-btn {
-		color: #fff;
-		font-size: 14px;
-		padding: 4px 16px;
-		border-radius: 20px;
-		background: rgba(255, 255, 255, 0.15);
-		flex-shrink: 0;
-		height: 40px;
-	}
-	.city-locate-btn:hover {
-		background: rgba(255, 255, 255, 0.25);
-	}
-	.city-select {
-		width: 110px;
-		flex-shrink: 0;
 	}
 	.hero-search-input {
 		max-width: 360px;

@@ -27,28 +27,12 @@
 					:value="s.id"
 				/>
 			</el-select>
-			<el-button
-				class="locate-btn"
-				@click="detectCity"
-				:loading="cityDetecting"
-			>
-				<el-icon><Location /></el-icon>
-				{{ city || "定位" }}
-			</el-button>
-			<el-select
-				v-model="city"
-				placeholder="选择城市"
-				clearable
-				@change="fetchMatches"
-				style="width: 120px"
-			>
-				<el-option
-					v-for="c in cityOptions"
-					:key="c"
-					:label="c"
-					:value="c === '全国' ? '' : c"
-				/>
-			</el-select>
+			<CascadingCitySelect
+				v-model="regionValue"
+				storage-key="search_city"
+				@update:model-value="fetchMatches"
+				:compact="false"
+			/>
 			<el-date-picker
 				v-model="date"
 				type="date"
@@ -93,41 +77,16 @@
 <script setup lang="ts">
 	import { ref, onMounted } from "vue";
 	import { useRoute } from "vue-router";
-	import { ElMessage } from "element-plus";
-	import { Search, Location } from "@element-plus/icons-vue";
+	import { Search } from "@element-plus/icons-vue";
 	import { matchApi, sportApi } from "@/api";
 	import type { Match, Sport } from "@/types";
 	import MatchCard from "@/components/MatchCard.vue";
-
-	const cityOptions = [
-		"全国",
-		"北京",
-		"上海",
-		"广州",
-		"深圳",
-		"杭州",
-		"成都",
-		"武汉",
-		"南京",
-		"重庆",
-		"西安",
-		"天津",
-		"苏州",
-		"长沙",
-		"郑州",
-		"东莞",
-		"青岛",
-		"厦门",
-		"合肥",
-		"佛山",
-		"宁波",
-	];
+	import CascadingCitySelect from "@/components/CascadingCitySelect.vue";
 
 	const route = useRoute();
 	const keyword = ref((route.query.keyword as string) || "");
 	const sportId = ref<number | undefined>(route.query.sportId ? Number(route.query.sportId) : undefined);
-	const city = ref((route.query.city as string) || "");
-	const cityDetecting = ref(false);
+	const regionValue = ref((route.query.region as string) || "");
 	const date = ref("");
 	const sports = ref<Sport[]>([]);
 	const matches = ref<Match[]>([]);
@@ -137,6 +96,14 @@
 	const total = ref(0);
 
 	let searchTimer: ReturnType<typeof setTimeout>;
+
+	function extractCity(region: string): string {
+		if (!region) return "";
+		const parts = region.split("-");
+		if (parts.length >= 2 && parts[1] !== "不限") return parts[1];
+		if (parts[0] && parts[0] !== "全国") return parts[0];
+		return "";
+	}
 
 	function handleSearch() {
 		clearTimeout(searchTimer);
@@ -154,7 +121,7 @@
 				pageSize,
 				keyword: keyword.value || undefined,
 				sportId: sportId.value,
-				city: city.value || undefined,
+				city: extractCity(regionValue.value) || undefined,
 				date: date.value || undefined,
 				status: 1,
 			});
@@ -162,34 +129,6 @@
 			total.value = res.data.pagination.total;
 		} finally {
 			loading.value = false;
-		}
-	}
-
-	async function detectCity() {
-		if (!navigator.geolocation) {
-			ElMessage.warning("浏览器不支持定位功能");
-			return;
-		}
-		cityDetecting.value = true;
-		try {
-			const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-				navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 });
-			});
-			const { latitude, longitude } = position.coords;
-			const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&accept-language=zh`);
-			const data = await res.json();
-			const addr = data.address || {};
-			const province = addr.province || "";
-			const cityPart = addr.city || addr.town || "";
-			const district = addr.district || addr.county || "";
-			const displayCity = district && cityPart ? `${cityPart}${district}` : cityPart || district || province || "";
-			const match = displayCity.match(/(北京|上海|广州|深圳|杭州|成都|武汉|南京|重庆|西安|天津|苏州|长沙|郑州|东莞|青岛|厦门|合肥|佛山|宁波)(.+)?/);
-			city.value = match ? match[0] : displayCity || "";
-			if (city.value) fetchMatches();
-		} catch {
-			ElMessage.warning("定位失败，请手动选择城市");
-		} finally {
-			cityDetecting.value = false;
 		}
 	}
 
