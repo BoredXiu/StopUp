@@ -22,14 +22,30 @@
 						<text class="pick-arrow">▾</text>
 					</view>
 				</picker>
+				<view
+					class="clear-btn"
+					v-if="displayRegion"
+					@tap="clearRegion"
+				>
+					<text>✕</text>
+				</view>
 			</view>
-			<input
-				class="search-input"
-				v-model="keyword"
-				placeholder="搜索场馆"
-				confirm-type="search"
-				@confirm="fetchVenues"
-			/>
+			<view class="search-row">
+				<input
+					class="search-input"
+					v-model="keyword"
+					placeholder="搜索场馆"
+					confirm-type="search"
+					@confirm="fetchVenues"
+				/>
+				<view
+					class="clear-btn"
+					v-if="keyword"
+					@tap="clearKeyword"
+				>
+					<text>✕</text>
+				</view>
+			</view>
 		</view>
 
 		<view
@@ -149,6 +165,23 @@
 		fetchVenues();
 	}
 
+	function clearRegion(): void {
+		regionPickValue.value = [0, 0, 0];
+		displayRegion.value = "";
+		currentProvince.value = "";
+		currentCity.value = "";
+		currentDistrict.value = "";
+		uni.removeStorageSync("venueProvince");
+		uni.removeStorageSync("venueCity");
+		uni.removeStorageSync("venueDistrict");
+		fetchVenues();
+	}
+
+	function clearKeyword(): void {
+		keyword.value = "";
+		fetchVenues();
+	}
+
 	function onRegionColumnChange(e: any): void {
 		const col = e.detail.column;
 		const val = e.detail.value;
@@ -265,6 +298,23 @@
 		padding: 10px 14px;
 		background: #fff;
 		gap: 8px;
+	}
+	.search-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.clear-btn {
+		width: 22px;
+		height: 22px;
+		border-radius: 50%;
+		background: #e0e0e0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 11px;
+		color: #999;
+		flex-shrink: 0;
 	}
 	.city-bar {
 		display: flex;

@@ -1,13 +1,11 @@
 import request from "./request";
 
 export const authApi = {
-	loginByPhone: (data: { phone: string; password: string; captchaId?: string; captchaCode?: string }) => request.post("/auth/login/phone", data),
+	loginByPhone: (data: { phone: string; password: string; captchaId: string; captchaCode: string }) => request.post("/auth/login/phone", data),
 
 	loginByWechat: (data: { code: string; userInfo?: any }) => request.post("/auth/login/wechat", data),
 
-	register: (data: { phone: string; password: string; nickname?: string; smsCode: string }) => request.post("/auth/register", data),
-
-	sendSms: (phone: string, captchaId?: string, captchaCode?: string) => request.post("/auth/send-sms", { phone, captchaId, captchaCode }),
+	register: (data: { phone: string; password: string; nickname?: string; captchaId: string; captchaCode: string }) => request.post("/auth/register", data),
 
 	getCaptcha: () => request.get("/auth/captcha"),
 
@@ -69,6 +67,13 @@ export const reportApi = {
 
 export const sportApi = {
 	getAll: () => request.get("/sports"),
+};
+
+export const regionApi = {
+	getProvinces: () => request.get("/regions"),
+	getCities: (province: string) => request.get("/regions", { params: { province } }),
+	getDistricts: (province: string, city: string) => request.get("/regions", { params: { province, city } }),
+	getFull: () => request.get("/regions/full"),
 };
 
 export const uploadApi = {

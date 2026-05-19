@@ -81,6 +81,9 @@
 								登录
 							</el-button>
 						</el-form-item>
+						<el-form-item>
+							<el-checkbox v-model="rememberMe">七天免登录</el-checkbox>
+						</el-form-item>
 					</el-form>
 				</el-tab-pane>
 
@@ -103,28 +106,6 @@
 								placeholder="请输入手机号"
 								size="large"
 							/>
-						</el-form-item>
-						<el-form-item
-							label="短信验证码"
-							prop="smsCode"
-						>
-							<div class="sms-row">
-								<el-input
-									v-model="registerForm.smsCode"
-									placeholder="6位验证码"
-									size="large"
-									maxlength="6"
-									style="flex: 1"
-								/>
-								<el-button
-									size="large"
-									@click="sendSms"
-									:disabled="smsCountdown > 0 || !smsReady"
-									class="sms-btn"
-								>
-									{{ smsCountdown > 0 ? smsCountdown + "s" : smsReady ? "获取验证码" : "先完成图形验证" }}
-								</el-button>
-							</div>
 						</el-form-item>
 						<el-form-item
 							label="图形验证码"
@@ -198,6 +179,9 @@
 								注册
 							</el-button>
 						</el-form-item>
+						<el-form-item>
+							<el-checkbox v-model="rememberMe">七天免登录</el-checkbox>
+						</el-form-item>
 					</el-form>
 				</el-tab-pane>
 			</el-tabs>
@@ -231,22 +215,20 @@
 	const loading = ref(false);
 	const phoneFormRef = ref<FormInstance>();
 	const registerFormRef = ref<FormInstance>();
-	const smsCountdown = ref(0);
-	const smsReady = ref(false);
 	const captchaImage = ref("");
 	const captchaId = ref("");
 
 	const phoneForm = reactive({ phone: "", password: "", captchaCode: "" });
+	const rememberMe = ref(false);
 	const phoneRules: FormRules = {
 		phone: [{ required: true, pattern: /^1[3-9]\d{9}$/, message: "请输入正确的手机号", trigger: "blur" }],
 		password: [{ required: true, min: 6, message: "密码至少6位", trigger: "blur" }],
 		captchaCode: [{ required: true, message: "请输入图形验证码", trigger: "blur" }],
 	};
 
-	const registerForm = reactive({ phone: "", smsCode: "", captchaCode: "", nickname: "", password: "", confirmPassword: "" });
+	const registerForm = reactive({ phone: "", captchaCode: "", nickname: "", password: "", confirmPassword: "" });
 	const registerRules: FormRules = {
 		phone: [{ required: true, pattern: /^1[3-9]\d{9}$/, message: "请输入正确的手机号", trigger: "blur" }],
-		smsCode: [{ required: true, len: 6, message: "请输入6位短信验证码", trigger: "blur" }],
 		captchaCode: [{ required: true, message: "请输入图形验证码", trigger: "blur" }],
 		nickname: [{ required: true, min: 2, max: 20, message: "昵称2-20个字符", trigger: "blur" }],
 		password: [{ required: true, min: 6, max: 20, message: "密码6-20位", trigger: "blur" }],
@@ -267,35 +249,8 @@
 			const res = await authApi.getCaptcha();
 			captchaImage.value = res.data.image;
 			captchaId.value = res.data.captchaId;
-			smsReady.value = true;
 		} catch {
 			/* ignore */
-		}
-	}
-
-	async function sendSms() {
-		if (!registerForm.phone) {
-			ElMessage.warning("请输入手机号");
-			return;
-		}
-		if (!/^1[3-9]\d{9}$/.test(registerForm.phone)) {
-			ElMessage.warning("请输入正确的手机号");
-			return;
-		}
-		if (!registerForm.captchaCode) {
-			ElMessage.warning("请先输入图形验证码");
-			return;
-		}
-		try {
-			await authApi.sendSms(registerForm.phone, captchaId.value, registerForm.captchaCode);
-			ElMessage.success("验证码已发送");
-			smsCountdown.value = 60;
-			const timer = setInterval(() => {
-				smsCountdown.value--;
-				if (smsCountdown.value <= 0) clearInterval(timer);
-			}, 1000);
-		} catch {
-			refreshCaptcha();
 		}
 	}
 
@@ -304,7 +259,7 @@
 		if (!valid) return;
 		loading.value = true;
 		try {
-			await userStore.loginByPhone(phoneForm.phone, phoneForm.password);
+			await userStore.loginByPhone(phoneForm.phone, phoneForm.password, captchaId.value, phoneForm.captchaCode, rememberMe.value);
 			ElMessage.success("登录成功");
 			const redirect = route.query.redirect as string;
 			router.push(redirect || "/");
@@ -321,12 +276,11 @@
 		if (!valid) return;
 		loading.value = true;
 		try {
-			await userStore.register(registerForm.phone, registerForm.password, registerForm.smsCode, registerForm.nickname);
+			await userStore.register(registerForm.phone, registerForm.password, registerForm.nickname, captchaId.value, registerForm.captchaCode, rememberMe.value);
 			ElMessage.success("注册成功");
 			router.push("/");
 		} catch {
-			refreshCaptcha();
-			registerForm.captchaCode = "";
+			/* error handled by request interceptor */
 		} finally {
 			loading.value = false;
 		}
@@ -378,14 +332,6 @@
 	}
 	.wechat-login {
 		margin-top: 8px;
-	}
-	.sms-row {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-	}
-	.sms-btn {
-		min-width: 120px;
 	}
 	.captcha-row {
 		display: flex;

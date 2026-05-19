@@ -47,7 +47,13 @@
 			</view>
 			<view class="info-row">
 				<text class="info-label">费用</text>
-				<text class="info-value price">¥{{ match.perPersonFee || 0 }}/人</text>
+				<text
+					class="info-value"
+					:class="{ price: match.feeType !== 3 }"
+				>
+					<template v-if="match.feeType === 3">免费</template>
+					<template v-else>¥{{ match.perPersonFee || 0 }}/人 ({{ getFeeTypeText(match.feeType) }})</template>
+				</text>
 			</view>
 			<view
 				class="info-row"
@@ -139,6 +145,7 @@
 	import { ref, computed } from "vue";
 	import { onLoad } from "@dcloudio/uni-app";
 	import { matchApi } from "@/api";
+	import { getFeeTypeText } from "@/utils/format";
 	import { useUserStore } from "@/store/user";
 	import type { Match, MatchMember } from "@/types";
 

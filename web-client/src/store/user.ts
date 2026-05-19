@@ -8,15 +8,15 @@ export const useUserStore = defineStore("user", () => {
 	const user = ref<User | null>(JSON.parse(localStorage.getItem("user") || "null"));
 	const isLoggedIn = computed(() => !!token.value);
 
-	async function loginByPhone(phone: string, password: string) {
-		const res = await authApi.loginByPhone({ phone, password });
-		setAuth(res.data);
+	async function loginByPhone(phone: string, password: string, captchaId: string, captchaCode: string, rememberMe = false) {
+		const res = await authApi.loginByPhone({ phone, password, captchaId, captchaCode, rememberMe });
+		setAuth(res.data, rememberMe);
 		return res.data;
 	}
 
-	async function register(phone: string, password: string, smsCode: string, nickname?: string) {
-		const res = await authApi.register({ phone, password, smsCode, nickname });
-		setAuth(res.data);
+	async function register(phone: string, password: string, nickname: string | undefined, captchaId: string, captchaCode: string, rememberMe = false) {
+		const res = await authApi.register({ phone, password, nickname, captchaId, captchaCode, rememberMe });
+		setAuth(res.data, rememberMe);
 		return res.data;
 	}
 
@@ -26,11 +26,14 @@ export const useUserStore = defineStore("user", () => {
 		localStorage.setItem("user", JSON.stringify(res.data));
 	}
 
-	function setAuth(data: { accessToken: string; user: User }) {
+	function setAuth(data: { accessToken: string; user: User }, rememberMe = false) {
 		token.value = data.accessToken;
 		user.value = data.user;
 		localStorage.setItem("token", data.accessToken);
 		localStorage.setItem("user", JSON.stringify(data.user));
+		if (rememberMe) {
+			localStorage.setItem("rememberMe", "true");
+		}
 	}
 
 	function logout() {
@@ -38,6 +41,7 @@ export const useUserStore = defineStore("user", () => {
 		user.value = null;
 		localStorage.removeItem("token");
 		localStorage.removeItem("user");
+		localStorage.removeItem("rememberMe");
 	}
 
 	return {

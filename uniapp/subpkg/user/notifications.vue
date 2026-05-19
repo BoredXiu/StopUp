@@ -33,7 +33,7 @@
 				<view class="notify-content">
 					<text class="notify-title">{{ item.title }}</text>
 					<text class="notify-text">{{ item.content }}</text>
-					<text class="notify-time">{{ item.createdAt }}</text>
+					<text class="notify-time">{{ formatDateTime(item.createdAt) }}</text>
 				</view>
 				<view
 					v-if="item.isRead === 0"
@@ -54,6 +54,7 @@
 	import { ref } from "vue";
 	import { onShow } from "@dcloudio/uni-app";
 	import { notificationApi } from "@/api";
+	import { formatDateTime } from "@/utils/format";
 	import type { Notification } from "@/types";
 
 	const notifications = ref<Notification[]>([]);

@@ -40,6 +40,13 @@
 						<text class="picker-arrow">▾</text>
 					</view>
 				</picker>
+				<view
+					class="clear-btn"
+					v-if="form.gender"
+					@tap.stop="clearGender"
+				>
+					<text>✕</text>
+				</view>
 			</view>
 
 			<view class="form-item">
@@ -55,6 +62,13 @@
 						<text class="picker-arrow">▾</text>
 					</view>
 				</picker>
+				<view
+					class="clear-btn"
+					v-if="form.birthday"
+					@tap.stop="clearBirthday"
+				>
+					<text>✕</text>
+				</view>
 			</view>
 
 			<view class="form-item">
@@ -72,6 +86,13 @@
 						<text class="picker-arrow">▾</text>
 					</view>
 				</picker>
+				<view
+					class="clear-btn"
+					v-if="regionDisplay"
+					@tap.stop="clearRegion"
+				>
+					<text>✕</text>
+				</view>
 			</view>
 
 			<view class="form-item form-item-textarea">
@@ -132,6 +153,20 @@
 
 	function onBirthdayPick(e: any): void {
 		form.birthday = e.detail.value;
+	}
+
+	function clearGender(): void {
+		form.gender = 0;
+	}
+
+	function clearBirthday(): void {
+		form.birthday = "";
+	}
+
+	function clearRegion(): void {
+		regionPickValue.value = [0, 0, 0];
+		regionDisplay.value = "";
+		form.city = "";
 	}
 
 	const regionPickValue = ref([0, 0, 0]);
@@ -261,12 +296,18 @@
 		}
 	}
 
+	function formatDate(dateStr: string): string {
+		if (!dateStr) return "";
+		const match = dateStr.match(/^\d{4}-\d{2}-\d{2}/);
+		return match ? match[0] : dateStr;
+	}
+
 	onMounted(() => {
 		if (userStore.user) {
 			form.avatar = userStore.user.avatar || "";
 			form.nickname = userStore.user.nickname || "";
 			form.gender = userStore.user.gender || 0;
-			form.birthday = userStore.user.birthday || "";
+			form.birthday = formatDate(userStore.user.birthday || "");
 			form.city = userStore.user.city || "";
 			form.bio = userStore.user.bio || "";
 			parseCityToRegion(form.city);
@@ -327,6 +368,19 @@
 		font-size: 12px;
 		color: #ccc;
 		margin-left: 4px;
+	}
+	.clear-btn {
+		width: 22px;
+		height: 22px;
+		border-radius: 50%;
+		background: #e0e0e0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 12px;
+		color: #999;
+		margin-left: 8px;
+		flex-shrink: 0;
 	}
 	.form-textarea {
 		width: 100%;

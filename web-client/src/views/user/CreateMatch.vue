@@ -178,7 +178,12 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
-    await matchApi.create(form)
+    await matchApi.create({
+      ...form,
+      fee_type: Number(form.fee_type),
+      total_fee: Number(form.total_fee) || 0,
+      per_person_fee: Number(form.per_person_fee) || 0,
+    })
     ElMessage.success('球局创建成功')
     router.push('/user/matches')
   } finally {

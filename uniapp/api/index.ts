@@ -65,9 +65,9 @@ export const api = {
 
 export const authApi = {
 	loginByWechat: (code: string) => api.post<LoginResult>("/auth/login/wechat", { code }, true),
-	loginByPhone: (data: { phone: string; password: string; captchaId?: string; captchaCode?: string }) => api.post<LoginResult>("/auth/login/phone", data, true),
-	register: (data: { phone: string; password: string; nickname?: string; smsCode: string }) => api.post<LoginResult>("/auth/register", data, true),
-	sendSms: (phone: string, captchaId?: string, captchaCode?: string) => api.post("/auth/send-sms", { phone, captchaId, captchaCode }, true),
+	loginByPhone: (data: { phone: string; password: string; captchaId: string; captchaCode: string }) => api.post<LoginResult>("/auth/login/phone", data, true),
+	register: (data: { phone: string; password: string; nickname?: string; captchaId: string; captchaCode: string }) =>
+		api.post<LoginResult>("/auth/register", data, true),
 	getCaptcha: () => api.get<CaptchaData>("/auth/captcha", undefined, true),
 };
 
@@ -96,6 +96,7 @@ export const userApi = {
 	getProfile: () => api.get<any>("/users/profile"),
 	updateProfile: (data: Record<string, any>) => api.put("/users/profile", data),
 	getCreditLogs: (params?: Record<string, any>) => api.get<PaginatedData<any>>("/users/credit-logs", params),
+	list: (params?: Record<string, any>) => api.get<PaginatedData<any>>("/users", params),
 };
 
 export const notificationApi = {
@@ -105,6 +106,46 @@ export const notificationApi = {
 	unreadCount: () => api.get<{ count: number }>("/notifications/unread-count"),
 };
 
+export const reportApi = {
+	create: (data: Record<string, any>) => api.post("/reports", data),
+};
+
+export const feedbackApi = {
+	create: (data: Record<string, any>) => api.post("/feedbacks", data),
+};
+
+export const uploadApi = {
+	upload: (filePath: string) => {
+		return new Promise<ApiResponse<{ url: string }>>((resolve, reject) => {
+			uni.uploadFile({
+				url: BASE_URL + "/upload",
+				filePath,
+				name: "file",
+				header: {
+					Authorization: `Bearer ${uni.getStorageSync("token")}`,
+				},
+				success: (res) => {
+					try {
+						const data = JSON.parse(res.data) as ApiResponse<{ url: string }>;
+						if (data.code === 200) resolve(data);
+						else reject(new Error(data.message));
+					} catch {
+						reject(new Error("上传失败"));
+					}
+				},
+				fail: reject,
+			});
+		});
+	},
+};
+
 export const sportApi = {
 	getAll: () => api.get<any[]>("/sports"),
+};
+
+export const regionApi = {
+	getProvinces: () => api.get<{ name: string }[]>("/regions"),
+	getCities: (province: string) => api.get<{ name: string }[]>("/regions", { province }),
+	getDistricts: (province: string, city: string) => api.get<string[]>("/regions", { province, city }),
+	getFull: () => api.get<any[]>("/regions/full"),
 };

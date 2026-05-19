@@ -43,6 +43,8 @@
 				},
 				{ "path": "user/notifications", "style": { "navigationBarTitleText": "消息通知" } },
 				{ "path": "user/edit", "style": { "navigationBarTitleText": "编辑资料" } },
+				{ "path": "user/report", "style": { "navigationBarTitleText": "举报" } },
+				{ "path": "user/feedback", "style": { "navigationBarTitleText": "意见反馈" } },
 				{ "path": "login/index", "style": { "navigationBarTitleText": "登录" } }
 			]
 		}

@@ -6,23 +6,6 @@ const Joi = require("joi");
 router.get("/captcha", AuthController.getCaptcha);
 
 router.post(
-	"/send-sms",
-	validate(
-		Joi.object({
-			phone: Joi.string()
-				.pattern(/^1[3-9]\d{9}$/)
-				.required()
-				.messages({
-					"string.pattern.base": "请输入正确的手机号",
-				}),
-			captchaId: Joi.string().optional(),
-			captchaCode: Joi.string().optional(),
-		}),
-	),
-	AuthController.sendSms,
-);
-
-router.post(
 	"/login/phone",
 	validate(
 		Joi.object({
@@ -35,8 +18,9 @@ router.post(
 			password: Joi.string().min(6).max(20).required().messages({
 				"string.min": "密码至少6位",
 			}),
-			captchaId: Joi.string().optional(),
-			captchaCode: Joi.string().optional(),
+			captchaId: Joi.string().required(),
+			captchaCode: Joi.string().required(),
+			rememberMe: Joi.boolean().optional(),
 		}),
 	),
 	AuthController.loginByPhone,
@@ -67,9 +51,9 @@ router.post(
 				.required(),
 			password: Joi.string().min(6).max(20).required(),
 			nickname: Joi.string().max(20).optional(),
-			smsCode: Joi.string().length(6).required().messages({
-				"string.length": "短信验证码为6位数字",
-			}),
+			captchaId: Joi.string().required(),
+			captchaCode: Joi.string().required(),
+			rememberMe: Joi.boolean().optional(),
 		}),
 	),
 	AuthController.register,

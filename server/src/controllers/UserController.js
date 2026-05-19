@@ -5,6 +5,17 @@ const { success, paginate } = require("../utils/response");
 const { NotFoundError } = require("../utils/errors");
 
 const UserController = {
+	async list(req, res) {
+		const { page = 1, pageSize = 20, keyword } = req.query;
+		const result = await UserModel.list({
+			page: parseInt(page),
+			pageSize: parseInt(pageSize),
+			keyword,
+			status: 1,
+		});
+		res.json(paginate(result.list, result.total, parseInt(page), parseInt(pageSize)));
+	},
+
 	async getProfile(req, res) {
 		const user = await UserModel.findById(req.user.userId);
 		if (!user) throw new NotFoundError("用户不存在");
