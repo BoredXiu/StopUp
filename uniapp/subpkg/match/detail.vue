@@ -246,15 +246,93 @@
 	async function handlePayOrder(): Promise<void> {
 		if (!pendingOrderId.value) return;
 		try {
-			const { orderApi } = await import('@/api');
-			await orderApi.pay(pendingOrderId.value);
-			uni.showToast({ title: '支付成功', icon: 'success' });
-			pendingOrderId.value = 0;
-			pendingOrderAmount.value = 0;
+			const { orderApi } = await import("@/api");
+
+			// 1. 调用支付接口
+			const res: any = await orderApi.pay(pendingOrderId.value);
+			const payResult = res.data;
+
+			// 2. 余额足够，直接支付成功
+			if (payResult.paid) {
+				uni.showToast({ title: "支付成功（余额扣款）", icon: "success" });
+				pendingOrderId.value = 0;
+				pendingOrderAmount.value = 0;
+				return;
+			}
+
+			// 3. 余额不足，需要微信支付差额
+			if (payResult.needWechatPay && payResult.wechatAmount > 0) {
+				const wechatMsg = payResult.balancePaid > 0
+					? `余额已抵扣 ¥${payResult.balancePaid.toFixed(2)}，还需微信支付 ¥${payResult.wechatAmount.toFixed(2)}`
+					: `需微信支付 ¥${payResult.wechatAmount.toFixed(2)}`;
+
+				const modalRes = await uni.showModal({
+					title: "确认支付",
+					content: wechatMsg,
+					confirmText: "去支付",
+					cancelText: "取消",
+				});
+				if (!modalRes.confirm) {
+					uni.showToast({ title: "已取消支付", icon: "none" });
+					return;
+				}
+
+				// 4. 调起微信支付
+				try {
+					await requestPayment(payResult.prepayParams);
+				} catch (payErr: any) {
+					if (payErr?.errMsg?.includes("cancel")) {
+						uni.showToast({ title: "已取消支付", icon: "none" });
+						return;
+					}
+					throw payErr;
+				}
+
+				// 5. 确认支付结果
+				await orderApi.payConfirm(pendingOrderId.value, payResult.payOrderNo);
+				uni.showToast({ title: "支付成功", icon: "success" });
+				pendingOrderId.value = 0;
+				pendingOrderAmount.value = 0;
+				return;
+			}
+
+			// 未知状态
+			uni.showToast({ title: "支付失败，请重试", icon: "none" });
 		} catch (err: any) {
-			const msg = err?.message || '支付失败';
-			uni.showToast({ title: msg, icon: 'none' });
+			const msg = err?.message || "支付失败";
+			uni.showToast({ title: msg, icon: "none" });
 		}
+	}
+
+	/**
+	 * 调起微信支付
+	 */
+	function requestPayment(params: Record<string, any>): Promise<void> {
+		// #ifdef MP-WEIXIN
+		// 开发模式跳过真实支付
+		if (params._devMode) {
+			return new Promise<void>((resolve) => {
+				setTimeout(() => resolve(), 500);
+			});
+		}
+		return new Promise((resolve, reject) => {
+			// @ts-ignore
+			wx.requestPayment({
+				timeStamp: params.timeStamp,
+				nonceStr: params.nonceStr,
+				package: params.package,
+				signType: params.signType || "MD5",
+				paySign: params.paySign,
+				success: () => resolve(),
+				fail: reject,
+			});
+		});
+		// #endif
+		// #ifndef MP-WEIXIN
+		return new Promise<void>((resolve) => {
+			setTimeout(() => resolve(), 500);
+		});
+		// #endif
 	}
 
 	async function handleLeave(): Promise<void> {

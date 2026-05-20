@@ -85,7 +85,8 @@ export const venueApi = {
 
 export const orderApi = {
 	myOrders: (params?: Record<string, any>) => api.get<PaginatedData<any>>("/orders", params),
-	pay: (id: number) => api.post(`/orders/${id}/pay`),
+	pay: (id: number) => api.post<any>(`/orders/${id}/pay`),
+	payConfirm: (id: number, payOrderNo: string) => api.post<any>(`/orders/${id}/pay/confirm`, { payOrderNo }),
 	refund: (id: number, reason?: string) => api.post(`/orders/${id}/refund`, { reason }),
 };
 
@@ -134,12 +135,15 @@ export const uploadApi = {
 			});
 		});
 	},
-	uploadTmp: (filePath: string) => {
+	uploadTmp: (filePath: string, category?: string) => {
 		return new Promise<ApiResponse<{ url: string; filename: string }>>((resolve, reject) => {
+			const formData: any = {};
+			if (category) formData.category = category;
 			uni.uploadFile({
 				url: BASE_URL + "/upload/tmp",
 				filePath,
 				name: "file",
+				formData,
 				header: {
 					Authorization: `Bearer ${uni.getStorageSync("token")}`,
 				},
@@ -156,8 +160,8 @@ export const uploadApi = {
 			});
 		});
 	},
-	confirm: (filename: string) => {
-		return api.post<{ url: string }>("/upload/confirm", { filename });
+	confirm: (filename: string, category?: string) => {
+		return api.post<{ url: string }>("/upload/confirm", { filename, category });
 	},
 };
 
@@ -170,4 +174,27 @@ export const regionApi = {
 	getCities: (province: string) => api.get<{ name: string }[]>("/regions", { province }),
 	getDistricts: (province: string, city: string) => api.get<string[]>("/regions", { province, city }),
 	getFull: () => api.get<any[]>("/regions/full"),
+};
+
+export const walletApi = {
+	getBalance: () => api.get<{ balance: number }>("/wallet/balance"),
+	recharge: (amount: number) =>
+		api.post<{
+			orderNo: string;
+			prepayParams: {
+				timeStamp: string;
+				nonceStr: string;
+				package: string;
+				signType: string;
+				paySign: string;
+			};
+		}>("/wallet/recharge", { amount }),
+	confirmRecharge: (orderNo: string) =>
+		api.post<{
+			orderNo: string;
+			amount: number;
+			balanceBefore: number;
+			balanceAfter: number;
+		}>("/wallet/recharge/confirm", { orderNo }),
+	getTransactions: (params?: Record<string, any>) => api.get<PaginatedData<any>>("/wallet/transactions", params),
 };
